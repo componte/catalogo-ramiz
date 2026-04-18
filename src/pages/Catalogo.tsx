@@ -97,6 +97,7 @@ export default function Catalogo() {
       const lista = (prods || [])
         .map((p: any) => ({ ...p, subcategoria_nombre: p.subcategorias?.nombre ?? null, variaciones: varMap[p.id] || [] }))
         .filter((p: Producto) => {
+          if (p.stock_actual === null && p.variaciones.length === 0) return true;
           const varStock = p.variaciones.reduce((a, v) => a + Number(v.stock_actual ?? 0), 0);
           const total    = p.variaciones.length > 0 ? varStock : Number(p.stock_actual ?? 0);
           return total > 0;
