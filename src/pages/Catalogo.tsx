@@ -340,12 +340,12 @@ export default function Catalogo() {
         body { background: #fff; font-family: 'DM Sans', sans-serif; }
         .ct { min-height: 100vh; background: #fff; font-family: 'DM Sans', sans-serif; color: #1c1008; }
 
-        .ct-hero { background: #1c1008; padding: 28px 16px 24px; text-align: center; position: relative; overflow: hidden; }
-        .ct-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.18) 0%, transparent 70%); pointer-events: none; }
-        .ct-logo { width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(249,115,22,0.5); object-fit: contain; margin-bottom: 10px; }
-        .ct-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.5rem, 5vw, 2.8rem); font-weight: 600; color: #F7F2EA; line-height: 1.1; }
-        .ct-sub { color: #f59e0b; font-size: 0.72rem; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 4px; }
-        .ct-search-wrap { max-width: 380px; margin: 16px auto 0; position: relative; }
+        .ct-hero { background: #1c1008; padding: 14px 16px 12px; display: flex; align-items: center; gap: 10px; }
+        .ct-logo-circle { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #f97316, #f59e0b); flex-shrink: 0; }
+        .ct-hero-text { flex: 1; min-width: 0; }
+        .ct-title { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; font-weight: 600; color: #F7F2EA; line-height: 1.1; }
+        .ct-sub { color: #f59e0b; font-size: 0.65rem; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; }
+        .ct-search-wrap { width: 100%; max-width: 220px; position: relative; }
         .ct-search { width: 100%; background: rgba(247,242,234,0.1); border: 1px solid rgba(249,115,22,0.3); border-radius: 40px; padding: 9px 16px 9px 36px; color: #F7F2EA; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none; transition: border-color 0.2s; }
         .ct-search::placeholder { color: rgba(247,242,234,0.4); }
         .ct-search:focus { border-color: #f97316; }
@@ -414,15 +414,17 @@ export default function Catalogo() {
 
       <div className="ct">
         <div className="ct-hero">
-          <img src={LOGO_URL} alt="Logo" className="ct-logo" />
-          <h1 className="ct-title">Charcutería Ramiz</h1>
-          <p className="ct-sub">Catálogo de Productos</p>
+          <div className="ct-logo-circle" />
+          <div className="ct-hero-text">
+            <h1 className="ct-title">Charcutería Ramiz</h1>
+            <p className="ct-sub">Catálogo de Productos</p>
+          </div>
           <div className="ct-search-wrap">
             <span className="ct-search-icon">🔍</span>
             <input
               type="text"
               className="ct-search"
-              placeholder="Buscar producto..."
+              placeholder="Buscar..."
               value={busqueda}
               onChange={e => { setBusqueda(e.target.value); }}
             />
@@ -444,6 +446,13 @@ export default function Catalogo() {
           <div className="ct-loading"><div className="ct-spinner" /><span>Cargando catálogo...</span></div>
         ) : (
           <div className="ct-body">
+            {Object.keys(grupos).length === 0 && (
+              <div style={{ textAlign:"center", padding:"48px 16px", color:"#9a7a5c" }}>
+                <div style={{ fontSize:"2rem", marginBottom:"8px" }}>🥩</div>
+                <p style={{ fontSize:"0.88rem" }}>Aún no hay productos en esta categoría.</p>
+                <p style={{ fontSize:"0.75rem", marginTop:"4px" }}>Asígnalos desde el sistema interno.</p>
+              </div>
+            )}
             {Object.keys(grupos).sort().map(sub => (
               <div key={sub}>
                 {Object.keys(grupos).length > 1 && <div className="ct-group-title">{sub}</div>}
