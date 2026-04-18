@@ -28,6 +28,7 @@ const isKgUnit = (unidad: string | null) => (unidad || "").toLowerCase() === "kg
 type Variante = { id: string; nombre: string; precio_venta_usd: number | null; stock_actual: number | null };
 type Producto  = {
   id: string; nombre: string; categoria: string | null; unidad: string | null;
+  subcategoria_nombre: string | null;
   imagen_url: string | null; precio_venta_usd: number | null; stock_actual: number | null;
   variaciones: Variante[];
 };
@@ -72,7 +73,7 @@ export default function Catalogo() {
         supabase.from("configuracion").select("value").eq("key", "tasa_bcv").single(),
         supabase
           .from("productos")
-          .select("id, nombre, categoria, unidad, imagen_url, precio_venta_usd, stock_actual")
+          .select("id, nombre, categoria, unidad, imagen_url, precio_venta_usd, stock_actual, subcategorias(nombre)")
           .neq("activo", false)
           .order("nombre"),
         supabase.from("producto_variaciones").select("id, nombre, precio_venta_usd, stock_actual, producto_id"),
@@ -87,7 +88,7 @@ export default function Catalogo() {
       });
 
       const lista = (prods || [])
-        .map((p: any) => ({ ...p, variaciones: varMap[p.id] || [] }))
+        .map((p: any) => ({ ...p, subcategoria_nombre: p.subcategorias?.nombre ?? null, variaciones: varMap[p.id] || [] }))
         .filter((p: Producto) => {
           const varStock = p.variaciones.reduce((a, v) => a + Number(v.stock_actual ?? 0), 0);
           const total    = p.variaciones.length > 0 ? varStock : Number(p.stock_actual ?? 0);
@@ -117,7 +118,7 @@ export default function Catalogo() {
   const grupos = useMemo(() => {
     const g: Record<string, Producto[]> = {};
     filtrados.forEach(p => {
-      const sub = "General";
+      const sub = p.subcategoria_nombre?.trim() || "General";
       if (!g[sub]) g[sub] = [];
       g[sub].push(p);
     });
