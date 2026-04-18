@@ -345,12 +345,12 @@ export default function Catalogo() {
         .ct-hero-text { flex: 1; min-width: 0; }
         .ct-title { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; font-weight: 600; color: #F7F2EA; line-height: 1.1; }
         .ct-sub { color: #f59e0b; font-size: 0.65rem; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; }
-        .ct-search-wrap { width: 100%; max-width: 220px; position: relative; }
-        .ct-search { width: 100%; background: rgba(247,242,234,0.1); border: 1px solid rgba(249,115,22,0.3); border-radius: 40px; padding: 9px 16px 9px 36px; color: #F7F2EA; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none; transition: border-color 0.2s; }
-        .ct-search::placeholder { color: rgba(247,242,234,0.4); }
-        .ct-search:focus { border-color: #f97316; }
-        .ct-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: rgba(249,115,22,0.7); font-size: 0.85rem; pointer-events: none; }
 
+        .ct-search-bar { padding: 10px 12px; background: #fff; border-bottom: 1px solid #f0ebe4; position: relative; }
+        .ct-search2 { width: 100%; border: 1.5px solid #f0ebe4; border-radius: 40px; padding: 9px 16px 9px 36px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none; color: #1c1008; transition: border-color 0.2s; background: #faf8f5; }
+        .ct-search2:focus { border-color: #f97316; }
+        .ct-search2::placeholder { color: #c4a882; }
+        .ct-search-icon2 { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; pointer-events: none; }
         .ct-tabs { display: flex; gap: 0; border-bottom: 2px solid #f5f0e8; background: #fff; overflow-x: auto; scrollbar-width: none; }
         .ct-tabs::-webkit-scrollbar { display: none; }
         .ct-tab { flex: 1; min-width: 70px; padding: 12px 8px; font-size: 0.78rem; font-weight: 500; text-align: center; cursor: pointer; border: none; background: none; color: #9a7a5c; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
@@ -419,16 +419,17 @@ export default function Catalogo() {
             <h1 className="ct-title">Charcutería Ramiz</h1>
             <p className="ct-sub">Catálogo de Productos</p>
           </div>
-          <div className="ct-search-wrap">
-            <span className="ct-search-icon">🔍</span>
-            <input
-              type="text"
-              className="ct-search"
-              placeholder="Buscar..."
-              value={busqueda}
-              onChange={e => { setBusqueda(e.target.value); }}
-            />
-          </div>
+        </div>
+
+        <div className="ct-search-bar">
+          <span className="ct-search-icon2">🔍</span>
+          <input
+            type="text"
+            className="ct-search2"
+            placeholder="Buscar producto..."
+            value={busqueda}
+            onChange={e => { setBusqueda(e.target.value); }}
+          />
         </div>
 
         {/* Tabs de categoría */}
@@ -526,7 +527,10 @@ export default function Catalogo() {
           </div>
         )}
 
-        <div className="ct-footer">Charcutería Ramiz · Precios en USD · Bs al cambio BCV</div>
+        <div className="ct-footer">
+          Charcutería Ramiz · Precios en USD · Bs al cambio BCV
+          {tasa > 0 && <><br />Tasa BCV hoy: <strong>Bs. {tasa.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></>}
+        </div>
 
         {cartCount > 0 && (
           <button className="ct-fab" onClick={() => setCartOpen(true)}>
