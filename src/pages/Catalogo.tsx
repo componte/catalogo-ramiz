@@ -1,5 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  "https://iblufmwrggywzosuobpk.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlibHVmbXdyZ2d5d3pvc3VvYnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NTE2MTEsImV4cCI6MjA4OTEyNzYxMX0.PcJSENVSePE3gfIGDmJguc2VPAHyzQPAfVgtC0Bk_oA"
+);
 
 const LOGO_URL = "https://res.cloudinary.com/dpfk35vqc/image/upload/v1775250448/IMG_6554_klsr9i.png";
 const WHATSAPP_NUMBER = "584141291930";
