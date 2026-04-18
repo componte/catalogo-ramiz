@@ -9,45 +9,56 @@ const supabase = createClient(
 const LOGO_URL = "https://res.cloudinary.com/dpfk35vqc/image/upload/v1775250448/IMG_6554_klsr9i.png";
 const WHATSAPP_NUMBER = "584141291930";
 
-type Variante = {
-  id: string;
-  nombre: string;
-  precio_venta_usd: number | null;
-  stock_actual: number | null;
-};
+const DELIVERY_ZONES = [
+  { id: "th",    name: "Las Terrazas TH",                                        fee: 0.40 },
+  { id: "otros", name: "Tejados, Arado, Laguna, Casablanca, Panelas, Terrazas Edif", fee: 0.80 },
+  { id: "zafra", name: "La Zafra",                                               fee: 1.00 },
+];
 
-type Producto = {
-  id: string;
-  nombre: string;
-  categoria: string | null;
-  imagen_url: string | null;
-  precio_venta_usd: number | null;
-  stock_actual: number | null;
+const PRESETS_KG    = [0.1, 0.2, 0.25, 0.5, 1, 1.5];
+const PRESETS_UNIT  = [1, 2, 3, 4, 5, 6];
+const LABEL_KG      = ["100g","200g","250g","500g","1kg","1.5kg"];
+const LABEL_UNIT    = ["1","2","3","4","5","6"];
+
+type Variante = { id: string; nombre: string; precio_venta_usd: number | null; stock_actual: number | null };
+type Producto  = {
+  id: string; nombre: string; categoria: string | null; subcategoria: string | null;
+  imagen_url: string | null; precio_venta_usd: number | null; stock_actual: number | null;
   variaciones: Variante[];
 };
-
 type CartItem = {
-  key: string;
-  productoId: string;
-  varianteId: string | null;
-  nombre: string;
-  variante: string | null;
-  precio: number;
-  qty: number;
+  key: string; nombre: string; variante: string | null;
+  precio: number; qty: number; categoria: string;
+  esKg: boolean;
 };
 
-const fmt = (n: number) =>
-  `$${n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmt = (n: number) => `$${n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtKg = (q: number) => q >= 1 ? `${q} kg` : `${Math.round(q * 1000)}g`;
+const isKgCat = (cat: string | null) => (cat || "").toLowerCase().includes("charcutería") || (cat || "").toLowerCase().includes("charcuteria");
 
 export default function Catalogo() {
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [tasa, setTasa] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [busqueda, setBusqueda] = useState("");
-  const [categoria, setCategoria] = useState("Todos");
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [variantModal, setVariantModal] = useState<Producto | null>(null);
+  const [productos, setProductos]   = useState<Producto[]>([]);
+  const [tasa, setTasa]             = useState(0);
+  const [loading, setLoading]       = useState(true);
+  const [busqueda, setBusqueda]     = useState("");
+  const [tabActivo, setTabActivo]   = useState("");
+  const [cart, setCart]             = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen]     = useState(false);
+  const [qtys, setQtys]             = useState<Record<string, number>>({});
+  const [varModal, setVarModal]     = useState<Producto | null>(null);
+  const [pendingQty, setPendingQty] = useState(1);
+  const [delivery, setDelivery]     = useState(true);
+  const [zona, setZona]             = useState(DELIVERY_ZONES[0].id);
+
+  // persist cart
+  useEffect(() => {
+    const saved = localStorage.getItem("cart_ramiz");
+    if (saved) { try { setCart(JSON.parse(saved)); } catch {} }
+  }, []);
+  useEffect(() => {
+    if (cart.length) localStorage.setItem("cart_ramiz", JSON.stringify(cart));
+    else localStorage.removeItem("cart_ramiz");
+  }, [cart]);
 
   useEffect(() => {
     (async () => {
@@ -55,12 +66,10 @@ export default function Catalogo() {
         supabase.from("configuracion").select("value").eq("key", "tasa_bcv").single(),
         supabase
           .from("productos")
-          .select("id, nombre, categoria, imagen_url, precio_venta_usd, stock_actual")
+          .select("id, nombre, categoria, subcategoria, imagen_url, precio_venta_usd, stock_actual")
           .neq("activo", false)
           .order("nombre"),
-        supabase
-          .from("producto_variaciones")
-          .select("id, nombre, precio_venta_usd, stock_actual, producto_id"),
+        supabase.from("producto_variaciones").select("id, nombre, precio_venta_usd, stock_actual, producto_id"),
       ]);
 
       if (cfg?.value) setTasa(parseFloat(cfg.value));
@@ -74,56 +83,73 @@ export default function Catalogo() {
       const lista = (prods || [])
         .map((p: any) => ({ ...p, variaciones: varMap[p.id] || [] }))
         .filter((p: Producto) => {
-          const varStock = p.variaciones.reduce((acc, v) => acc + Number(v.stock_actual ?? 0), 0);
-          const totalStock = p.variaciones.length > 0 ? varStock : Number(p.stock_actual ?? 0);
-          return totalStock > 0;
+          const varStock = p.variaciones.reduce((a, v) => a + Number(v.stock_actual ?? 0), 0);
+          const total    = p.variaciones.length > 0 ? varStock : Number(p.stock_actual ?? 0);
+          return total > 0;
         });
 
-      setProductos(lista);
+      setProductos(lista as Producto[]);
+      const cats = Array.from(new Set(lista.map((p: any) => p.categoria || "Otros").filter(Boolean)));
+      if (cats.length) setTabActivo(cats[0]);
       setLoading(false);
     })();
   }, []);
 
-  const categorias = useMemo(() => {
-    const cats = new Set(productos.map((p) => p.categoria?.trim() || "General"));
-    return ["Todos", ...Array.from(cats).sort()];
-  }, [productos]);
+  const tabs = useMemo(() =>
+    Array.from(new Set(productos.map(p => p.categoria || "Otros"))).sort()
+  , [productos]);
 
   const filtrados = useMemo(() => {
-    return productos.filter((p) => {
-      const cat = p.categoria?.trim() || "General";
-      const matchCat = categoria === "Todos" || cat === categoria;
-      const matchBusq =
-        !busqueda ||
-        p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-        (p.categoria || "").toLowerCase().includes(busqueda.toLowerCase());
-      return matchCat && matchBusq;
+    const q = busqueda.trim().toLowerCase();
+    return productos.filter(p => {
+      const matchTab  = !q && (p.categoria || "Otros") === tabActivo;
+      const matchBusq = q && (p.nombre.toLowerCase().includes(q) || (p.categoria || "").toLowerCase().includes(q));
+      return matchTab || matchBusq;
     });
-  }, [productos, categoria, busqueda]);
+  }, [productos, tabActivo, busqueda]);
 
-  const cartTotal = useMemo(() => cart.reduce((acc, i) => acc + i.precio * i.qty, 0), [cart]);
-  const cartCount = useMemo(() => cart.reduce((acc, i) => acc + i.qty, 0), [cart]);
+  const grupos = useMemo(() => {
+    const g: Record<string, Producto[]> = {};
+    filtrados.forEach(p => {
+      const sub = p.subcategoria?.trim() || "General";
+      if (!g[sub]) g[sub] = [];
+      g[sub].push(p);
+    });
+    return g;
+  }, [filtrados]);
 
-  const addToCart = (p: Producto, v?: Variante) => {
-    const key = v ? `${p.id}__${v.id}` : p.id;
-    const precio = Number(v?.precio_venta_usd ?? p.precio_venta_usd ?? 0);
-    const nombre = p.nombre;
+  const cartCount   = useMemo(() => cart.reduce((a, i) => a + i.qty, 0), [cart]);
+  const subtotal    = useMemo(() => cart.reduce((a, i) => a + i.precio * i.qty, 0), [cart]);
+  const deliveryFee = delivery ? (DELIVERY_ZONES.find(z => z.id === zona)?.fee ?? 0) : 0;
+  const total       = subtotal + deliveryFee;
+
+  const getDefaultQty = (p: Producto) => isKgCat(p.categoria) ? 0.5 : 1;
+
+  const addToCart = (p: Producto, v?: Variante, qty?: number) => {
+    const esKg     = isKgCat(p.categoria);
+    const key      = v ? `${p.id}__${v.id}` : p.id;
+    const nombre   = p.nombre;
     const variante = v?.nombre ?? null;
-    setCart((prev) => {
-      const idx = prev.findIndex((i) => i.key === key);
+    const precio   = Number(v?.precio_venta_usd ?? p.precio_venta_usd ?? 0);
+    const cantidad = qty ?? qtys[p.id] ?? getDefaultQty(p);
+
+    setCart(prev => {
+      const idx = prev.findIndex(i => i.key === key);
       if (idx >= 0) {
         const next = [...prev];
-        next[idx] = { ...next[idx], qty: next[idx].qty + 1 };
+        next[idx] = { ...next[idx], qty: next[idx].qty + cantidad };
         return next;
       }
-      return [...prev, { key, productoId: p.id, varianteId: v?.id ?? null, nombre, variante, precio, qty: 1 }];
+      return [...prev, { key, nombre, variante, precio, qty: cantidad, categoria: p.categoria || "", esKg }];
     });
+    setCartOpen(true);
   };
 
   const handleAgregar = (p: Producto) => {
-    const varsDisp = p.variaciones.filter((v) => Number(v.stock_actual ?? 0) > 0);
+    const varsDisp = p.variaciones.filter(v => Number(v.stock_actual ?? 0) > 0);
     if (varsDisp.length > 1) {
-      setVariantModal(p);
+      setPendingQty(qtys[p.id] ?? getDefaultQty(p));
+      setVarModal(p);
     } else if (varsDisp.length === 1) {
       addToCart(p, varsDisp[0]);
     } else {
@@ -131,468 +157,347 @@ export default function Catalogo() {
     }
   };
 
-  const updateQty = (key: string, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((i) => (i.key === key ? { ...i, qty: i.qty + delta } : i))
-        .filter((i) => i.qty > 0)
-    );
-  };
+  const updateQty = (key: string, delta: number) =>
+    setCart(prev => prev.map(i => i.key === key ? { ...i, qty: Math.max(0, +(i.qty + delta).toFixed(2)) } : i).filter(i => i.qty > 0));
 
   const sendWhatsApp = () => {
-    if (!cart.length) return;
-    let msg = "Hola! Quiero hacer el siguiente pedido:\n\n";
-    cart.forEach((i) => {
-      msg += `• ${i.nombre}${i.variante ? ` (${i.variante})` : ""} x${i.qty} — ${fmt(i.precio * i.qty)}\n`;
+    let msg = "*🛒 NUEVO PEDIDO — Charcutería Ramiz*\n\n";
+    cart.forEach(i => {
+      const qty = i.esKg ? fmtKg(i.qty) : `${i.qty} unid`;
+      msg += `• *${i.nombre}*${i.variante ? ` (${i.variante})` : ""}\n`;
+      msg += `  Cant: ${qty}  |  Subtotal: ${fmt(i.precio * i.qty)}\n\n`;
     });
-    msg += `\n*TOTAL: ${fmt(cartTotal)}*`;
-    if (tasa > 0) msg += ` / Bs. ${(cartTotal * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}`;
+    msg += "─────────────────\n";
+    msg += `Subtotal: ${fmt(subtotal)}\n`;
+    if (delivery) {
+      const z = DELIVERY_ZONES.find(z => z.id === zona);
+      msg += `Delivery (${z?.name}): ${fmt(deliveryFee)}\n`;
+    }
+    msg += `─────────────────\n`;
+    msg += `*TOTAL: ${fmt(total)}*`;
+    if (tasa > 0) msg += ` / Bs. ${(total * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}`;
+    msg += `\n\n✅ Por favor confírmenme disponibilidad.`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
-  const precioLabel = (p: Producto) => {
-    const vars = p.variaciones.filter((v) => Number(v.stock_actual ?? 0) > 0);
-    if (vars.length === 0) return p.precio_venta_usd ? fmt(Number(p.precio_venta_usd)) : "Consultar";
-    const precios = vars.map((v) => Number(v.precio_venta_usd ?? p.precio_venta_usd ?? 0)).filter(Boolean);
-    if (!precios.length) return "Consultar";
-    const min = Math.min(...precios);
-    const max = Math.max(...precios);
-    return min === max ? fmt(min) : `${fmt(min)}+`;
-  };
+  // ── CART PAGE ──────────────────────────────────────────────────────────────
+  if (cartOpen) {
+    return (
+      <>
+        <style>{`
+          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+          body { background: #fff; font-family: 'DM Sans', sans-serif; }
+          .cp { min-height: 100vh; display: flex; flex-direction: column; background: #fff; font-family: 'DM Sans', sans-serif; }
+          .cp-head { padding: 16px 16px 14px; border-bottom: 1px solid #f0ebe4; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; background: #fff; z-index: 10; }
+          .cp-back { background: #fff7f0; border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; color: #ea580c; flex-shrink: 0; }
+          .cp-back:hover { background: #ffedd5; }
+          .cp-head-title { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 600; color: #1c1008; flex: 1; }
+          .cp-badge { background: #ea580c; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+          .cp-items { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 14px; }
+          .cp-item { display: flex; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #f5f0e8; }
+          .cp-item:last-child { border-bottom: none; }
+          .cp-item-info { flex: 1; min-width: 0; }
+          .cp-item-nombre { font-size: 0.88rem; font-weight: 500; color: #1c1008; }
+          .cp-item-var { font-size: 0.72rem; color: #9a7a5c; margin-top: 1px; }
+          .cp-item-precio { font-size: 0.82rem; font-weight: 600; color: #ea580c; margin-top: 4px; }
+          .cp-qty-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+          .cp-qty-btn { background: #fff7f0; border: 1px solid #fde8d8; border-radius: 8px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; color: #ea580c; transition: background 0.1s; }
+          .cp-qty-btn:hover { background: #ffedd5; }
+          .cp-qty-num { font-size: 0.85rem; font-weight: 600; color: #1c1008; min-width: 36px; text-align: center; }
+          .cp-del { margin-left: auto; background: none; border: none; cursor: pointer; color: #d1ccc5; font-size: 1.1rem; padding: 2px; transition: color 0.1s; }
+          .cp-del:hover { color: #ef4444; }
+          .cp-item-total { font-size: 0.88rem; font-weight: 700; color: #ea580c; white-space: nowrap; }
+          .cp-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #9a7a5c; padding: 40px; }
+          .cp-empty p { font-size: 0.9rem; }
+          .cp-foot { border-top: 1px solid #f0ebe4; padding: 16px; background: #fff; }
+          .cp-add-more { width: 100%; padding: 11px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; margin-bottom: 14px; }
+          .cp-add-more:hover { opacity: 0.92; }
+          .cp-sep { border: none; border-top: 1px solid #f0ebe4; margin: 12px 0; }
+          .cp-delivery-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+          .cp-delivery-label { font-size: 0.85rem; font-weight: 500; color: #1c1008; }
+          .cp-check { accent-color: #ea580c; width: 16px; height: 16px; cursor: pointer; }
+          .cp-zones { display: flex; flex-direction: column; gap: 6px; padding-left: 24px; margin-bottom: 12px; }
+          .cp-zone-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+          .cp-zone-radio { accent-color: #ea580c; width: 15px; height: 15px; cursor: pointer; }
+          .cp-zone-name { font-size: 0.78rem; color: #5c4a3a; flex: 1; }
+          .cp-zone-fee { font-size: 0.78rem; font-weight: 600; color: #ea580c; }
+          .cp-totals { display: flex; flex-direction: column; gap: 6px; }
+          .cp-row { display: flex; justify-content: space-between; font-size: 0.85rem; }
+          .cp-row span:first-child { color: #9a7a5c; }
+          .cp-row span:last-child { font-weight: 500; color: #1c1008; }
+          .cp-total-row { display: flex; justify-content: space-between; font-size: 1rem; font-weight: 700; padding-top: 8px; border-top: 1px solid #f0ebe4; margin-top: 4px; }
+          .cp-total-row span:last-child { color: #ea580c; }
+          .cp-total-bs { font-size: 0.72rem; font-weight: 400; color: #9a7a5c; margin-left: 4px; }
+          .cp-wa { width: 100%; padding: 16px; background: #16a34a; color: white; border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 14px; letter-spacing: 0.02em; transition: background 0.15s; }
+          .cp-wa:hover { background: #15803d; }
+          .cp-wa-hint { text-align: center; font-size: 0.75rem; color: #9a7a5c; margin-top: 6px; }
+        `}</style>
+        <div className="cp">
+          <div className="cp-head">
+            <button className="cp-back" onClick={() => setCartOpen(false)}>←</button>
+            <span className="cp-head-title">Mi Pedido</span>
+            {cartCount > 0 && <span className="cp-badge">{cartCount}</span>}
+          </div>
 
+          <div className="cp-items">
+            {cart.length === 0 ? (
+              <div className="cp-empty">
+                <span style={{ fontSize: "2.5rem" }}>🛒</span>
+                <p>Tu carrito está vacío</p>
+                <button className="cp-add-more" onClick={() => setCartOpen(false)}>← Ver productos</button>
+              </div>
+            ) : (
+              cart.map(item => (
+                <div key={item.key} className="cp-item">
+                  <div className="cp-item-info">
+                    <div className="cp-item-nombre">{item.nombre}</div>
+                    {item.variante && <div className="cp-item-var">{item.variante}</div>}
+                    <div className="cp-item-precio">{fmt(item.precio)} / {item.esKg ? "kg" : "unid"}</div>
+                    <div className="cp-qty-row">
+                      <button className="cp-qty-btn" onClick={() => updateQty(item.key, item.esKg ? -0.1 : -1)}>−</button>
+                      <span className="cp-qty-num">{item.esKg ? fmtKg(item.qty) : item.qty}</span>
+                      <button className="cp-qty-btn" onClick={() => updateQty(item.key, item.esKg ? 0.1 : 1)}>+</button>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between" }}>
+                    <button className="cp-del" onClick={() => setCart(prev => prev.filter(i => i.key !== item.key))}>🗑</button>
+                    <span className="cp-item-total">{fmt(item.precio * item.qty)}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {cart.length > 0 && (
+            <div className="cp-foot">
+              <button className="cp-add-more" onClick={() => setCartOpen(false)}>← Seguir agregando productos</button>
+              <hr className="cp-sep" />
+
+              <div className="cp-delivery-row">
+                <input type="checkbox" className="cp-check" checked={delivery} onChange={e => setDelivery(e.target.checked)} id="del-check" />
+                <label htmlFor="del-check" className="cp-delivery-label">Incluir Delivery</label>
+              </div>
+              {delivery && (
+                <div className="cp-zones">
+                  {DELIVERY_ZONES.map(z => (
+                    <label key={z.id} className="cp-zone-row">
+                      <input type="radio" className="cp-zone-radio" name="zona" value={z.id} checked={zona === z.id} onChange={() => setZona(z.id)} />
+                      <span className="cp-zone-name">{z.name}</span>
+                      <span className="cp-zone-fee">+{fmt(z.fee)}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              <div className="cp-totals">
+                <div className="cp-row"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+                {delivery && <div className="cp-row"><span>Delivery</span><span>{fmt(deliveryFee)}</span></div>}
+                <div className="cp-total-row">
+                  <span>Total</span>
+                  <span>
+                    {fmt(total)}
+                    {tasa > 0 && <span className="cp-total-bs">/ Bs. {(total * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</span>}
+                  </span>
+                </div>
+              </div>
+
+              <button className="cp-wa" onClick={sendWhatsApp}>
+                <span>💬</span> ENVIAR PEDIDO POR WHATSAPP
+              </button>
+              <p className="cp-wa-hint">Se abrirá WhatsApp para enviarnos tu pedido</p>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // ── CATALOG PAGE ───────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-          --crema: #F7F2EA;
-          --espresso: #1C1008;
-          --terracota: #B8491F;
-          --oro: #C8983A;
-          --hueso: #EDE5D5;
-          --texto: #2D1E0F;
-          --texto-suave: #7A5C44;
-        }
-        body { background: var(--crema); }
-        .c-wrap { min-height: 100vh; background: var(--crema); font-family: 'DM Sans', sans-serif; color: var(--texto); }
+        body { background: #fff; font-family: 'DM Sans', sans-serif; }
+        .ct { min-height: 100vh; background: #fff; font-family: 'DM Sans', sans-serif; color: #1c1008; }
 
-        /* Hero */
-        .c-hero {
-          background: var(--espresso);
-          padding: 32px 16px 28px;
-          text-align: center;
-          position: relative;
-          overflow: hidden;
-        }
-        .c-hero::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(ellipse at 50% 0%, rgba(200,152,58,0.18) 0%, transparent 70%);
-          pointer-events: none;
-        }
-        .c-logo { width: 60px; height: 60px; border-radius: 50%; border: 2px solid rgba(200,152,58,0.5); object-fit: contain; margin-bottom: 12px; }
-        .c-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.6rem, 5vw, 3rem); font-weight: 600; color: var(--crema); line-height: 1.1; }
-        .c-sub { color: var(--oro); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 4px; }
-        .c-search-wrap { max-width: 400px; margin: 18px auto 0; position: relative; }
-        .c-search {
-          width: 100%;
-          background: rgba(247,242,234,0.1);
-          border: 1px solid rgba(200,152,58,0.3);
-          border-radius: 40px;
-          padding: 10px 16px 10px 38px;
-          color: var(--crema);
-          font-family: 'DM Sans', sans-serif;
-          font-size: 0.85rem;
-          outline: none;
-          transition: border-color 0.2s;
-        }
-        .c-search::placeholder { color: rgba(247,242,234,0.4); }
-        .c-search:focus { border-color: var(--oro); }
-        .c-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(200,152,58,0.7); font-size: 0.9rem; pointer-events: none; }
+        .ct-hero { background: #1c1008; padding: 28px 16px 24px; text-align: center; position: relative; overflow: hidden; }
+        .ct-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.18) 0%, transparent 70%); pointer-events: none; }
+        .ct-logo { width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(249,115,22,0.5); object-fit: contain; margin-bottom: 10px; }
+        .ct-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.5rem, 5vw, 2.8rem); font-weight: 600; color: #F7F2EA; line-height: 1.1; }
+        .ct-sub { color: #f59e0b; font-size: 0.72rem; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 4px; }
+        .ct-search-wrap { max-width: 380px; margin: 16px auto 0; position: relative; }
+        .ct-search { width: 100%; background: rgba(247,242,234,0.1); border: 1px solid rgba(249,115,22,0.3); border-radius: 40px; padding: 9px 16px 9px 36px; color: #F7F2EA; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; outline: none; transition: border-color 0.2s; }
+        .ct-search::placeholder { color: rgba(247,242,234,0.4); }
+        .ct-search:focus { border-color: #f97316; }
+        .ct-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: rgba(249,115,22,0.7); font-size: 0.85rem; pointer-events: none; }
 
-        /* Cats */
-        .c-cats { display: flex; gap: 6px; overflow-x: auto; padding: 14px 12px 6px; scrollbar-width: none; }
-        .c-cats::-webkit-scrollbar { display: none; }
-        .c-chip {
-          flex-shrink: 0;
-          padding: 5px 14px;
-          border-radius: 40px;
-          font-size: 0.75rem;
-          font-weight: 500;
-          cursor: pointer;
-          border: 1.5px solid transparent;
-          white-space: nowrap;
-          background: var(--hueso);
-          color: var(--texto-suave);
-          transition: all 0.15s;
-        }
-        .c-chip:hover { border-color: var(--terracota); color: var(--terracota); }
-        .c-chip.on { background: var(--espresso); color: var(--crema); border-color: var(--espresso); }
+        .ct-tabs { display: flex; gap: 0; border-bottom: 2px solid #f5f0e8; background: #fff; overflow-x: auto; scrollbar-width: none; }
+        .ct-tabs::-webkit-scrollbar { display: none; }
+        .ct-tab { flex: 1; min-width: 70px; padding: 12px 8px; font-size: 0.78rem; font-weight: 500; text-align: center; cursor: pointer; border: none; background: none; color: #9a7a5c; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+        .ct-tab:hover { color: #ea580c; background: #fff7f0; }
+        .ct-tab.on { color: #ea580c; border-bottom-color: #ea580c; font-weight: 600; }
 
-        /* Count */
-        .c-count { text-align: center; color: var(--texto-suave); font-size: 0.72rem; padding: 4px 12px 8px; }
+        .ct-body { padding: 12px 12px 100px; max-width: 700px; margin: 0 auto; }
+        .ct-group-title { font-size: 0.8rem; font-weight: 600; color: #9a7a5c; letter-spacing: 0.08em; text-transform: uppercase; padding: 16px 0 8px; border-bottom: 1px solid #f5f0e8; margin-bottom: 10px; }
 
-        /* Grid — 3 cols mobile, más en desktop */
-        .c-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
-          padding: 4px 10px 100px;
-          max-width: 1100px;
-          margin: 0 auto;
-        }
-        @media (min-width: 600px) { .c-grid { grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 4px 16px 100px; } }
-        @media (min-width: 900px) { .c-grid { grid-template-columns: repeat(5, 1fr); gap: 14px; } }
+        .ct-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+        @media (min-width: 480px) { .ct-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 700px) { .ct-grid { grid-template-columns: repeat(5, 1fr); } }
 
-        /* Card */
-        .c-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(28,16,8,0.07); display: flex; flex-direction: column; }
-        .c-img-wrap { position: relative; aspect-ratio: 1/1; background: var(--hueso); overflow: hidden; }
-        .c-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
-        .c-card:hover .c-img { transform: scale(1.04); }
-        .c-img-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2rem; background: linear-gradient(135deg, var(--hueso) 0%, #e8ddc8 100%); }
-        .c-cat-tag {
-          position: absolute; top: 6px; left: 6px;
-          background: rgba(28,16,8,0.72); color: var(--crema);
-          font-size: 0.58rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-          padding: 2px 7px; border-radius: 20px; backdrop-filter: blur(4px);
-        }
-        .c-body { padding: 8px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-        .c-nombre {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: var(--espresso);
-          line-height: 1.2;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .c-precio { font-size: 0.82rem; font-weight: 600; color: var(--terracota); }
-        .c-precio-bs { font-size: 0.68rem; color: var(--texto-suave); }
-        .c-add-btn {
-          margin-top: auto;
-          padding: 7px 4px;
-          background: var(--espresso);
-          color: var(--crema);
-          border: none;
-          border-radius: 8px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 0.72rem;
-          font-weight: 500;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-          transition: background 0.15s;
-          width: 100%;
-        }
-        .c-add-btn:hover { background: var(--terracota); }
+        .ct-card { background: #fff; border: 1px solid #f0ebe4; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow 0.15s; }
+        .ct-card:hover { box-shadow: 0 4px 14px rgba(28,16,8,0.1); }
+        .ct-img-wrap { aspect-ratio: 1/1; background: #f5f0e8; overflow: hidden; position: relative; }
+        .ct-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+        .ct-card:hover .ct-img { transform: scale(1.05); }
+        .ct-img-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; background: linear-gradient(135deg, #f5f0e8 0%, #ede5d5 100%); }
 
-        /* Cart FAB */
-        .c-fab {
-          position: fixed;
-          bottom: 20px;
-          right: 16px;
-          background: var(--terracota);
-          color: white;
-          border: none;
-          border-radius: 50px;
-          padding: 14px 20px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 0.9rem;
-          font-weight: 600;
-          cursor: pointer;
-          box-shadow: 0 4px 16px rgba(184,73,31,0.45);
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          transition: transform 0.15s, background 0.15s;
-          z-index: 100;
-        }
-        .c-fab:hover { background: #9e3a14; transform: scale(1.04); }
-        .c-fab-badge {
-          background: white;
-          color: var(--terracota);
-          border-radius: 50%;
-          width: 20px;
-          height: 20px;
-          font-size: 0.72rem;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
+        .ct-body-card { padding: 7px 7px 8px; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+        .ct-nombre { font-size: 0.75rem; font-weight: 500; color: #1c1008; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .ct-precio { font-size: 0.8rem; font-weight: 700; color: #ea580c; }
+        .ct-precio-unit { font-size: 0.62rem; color: #9a7a5c; font-weight: 400; }
+        .ct-precio-bs { font-size: 0.62rem; color: #9a7a5c; }
 
-        /* Cart drawer */
-        .c-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; }
-        .c-drawer {
-          position: fixed;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          max-height: 85vh;
-          background: white;
-          border-radius: 20px 20px 0 0;
-          z-index: 201;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-        @media (min-width: 600px) {
-          .c-drawer { left: auto; width: 400px; right: 24px; bottom: 24px; border-radius: 16px; max-height: 80vh; }
-        }
-        .c-drawer-header {
-          padding: 16px 20px;
-          border-bottom: 1px solid var(--hueso);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-        .c-drawer-title { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 600; color: var(--espresso); }
-        .c-close-btn { background: var(--hueso); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
-        .c-drawer-items { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-        .c-item { display: flex; align-items: center; gap: 10px; padding: 8px; background: var(--crema); border-radius: 10px; }
-        .c-item-info { flex: 1; min-width: 0; }
-        .c-item-nombre { font-size: 0.85rem; font-weight: 500; color: var(--espresso); truncate: true; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .c-item-var { font-size: 0.72rem; color: var(--texto-suave); }
-        .c-item-precio { font-size: 0.82rem; font-weight: 600; color: var(--terracota); white-space: nowrap; }
-        .c-qty { display: flex; align-items: center; gap: 6px; }
-        .c-qty-btn { background: white; border: 1px solid var(--hueso); border-radius: 6px; width: 26px; height: 26px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; color: var(--espresso); transition: background 0.1s; }
-        .c-qty-btn:hover { background: var(--hueso); }
-        .c-qty-num { font-size: 0.85rem; font-weight: 600; color: var(--espresso); min-width: 18px; text-align: center; }
-        .c-empty-cart { text-align: center; padding: 40px 20px; color: var(--texto-suave); }
-        .c-empty-cart p { font-size: 0.9rem; margin-top: 8px; }
-        .c-drawer-footer { padding: 16px; border-top: 1px solid var(--hueso); }
-        .c-total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .c-total-label { font-size: 0.85rem; color: var(--texto-suave); }
-        .c-total-val { font-size: 1.1rem; font-weight: 700; color: var(--espresso); }
-        .c-total-bs { font-size: 0.75rem; color: var(--texto-suave); text-align: right; }
-        .c-wa-btn {
-          width: 100%;
-          padding: 14px;
-          background: #25D366;
-          color: white;
-          border: none;
-          border-radius: 12px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 0.95rem;
-          font-weight: 600;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          transition: background 0.15s;
-        }
-        .c-wa-btn:hover { background: #1da851; }
+        .ct-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-top: 4px; }
+        .ct-preset { padding: 4px 2px; font-size: 0.65rem; font-weight: 500; border-radius: 6px; cursor: pointer; border: 1px solid #f0ebe4; background: #fff; color: #5c4a3a; text-align: center; transition: all 0.1s; }
+        .ct-preset:hover { border-color: #f97316; color: #ea580c; }
+        .ct-preset.on { background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border-color: transparent; }
 
-        /* Variant modal */
-        .c-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; display: flex; align-items: flex-end; justify-content: center; }
-        @media (min-width: 600px) { .c-modal-overlay { align-items: center; } }
-        .c-modal {
-          background: white;
-          border-radius: 20px 20px 0 0;
-          padding: 20px;
-          width: 100%;
-          max-width: 440px;
-          max-height: 70vh;
-          overflow-y: auto;
-        }
-        @media (min-width: 600px) { .c-modal { border-radius: 16px; } }
-        .c-modal-title { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 600; color: var(--espresso); margin-bottom: 4px; }
-        .c-modal-sub { font-size: 0.78rem; color: var(--texto-suave); margin-bottom: 16px; }
-        .c-var-list { display: flex; flex-direction: column; gap: 8px; }
-        .c-var-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 12px 14px;
-          background: var(--crema);
-          border-radius: 10px;
-          cursor: pointer;
-          transition: background 0.15s;
-        }
-        .c-var-row:hover { background: var(--hueso); }
-        .c-var-nombre { font-size: 0.88rem; font-weight: 500; color: var(--espresso); }
-        .c-var-precio { font-size: 0.85rem; font-weight: 600; color: var(--terracota); }
-        .c-modal-cancel { width: 100%; margin-top: 12px; padding: 10px; background: var(--hueso); border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; color: var(--texto-suave); }
+        .ct-add { margin-top: auto; padding-top: 6px; width: 100%; padding: 7px 4px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+        .ct-add:hover { opacity: 0.88; }
 
-        /* Loading */
-        .c-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; gap: 12px; color: var(--texto-suave); font-style: italic; font-size: 0.9rem; }
-        .c-spinner { width: 32px; height: 32px; border: 3px solid var(--hueso); border-top-color: var(--terracota); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .ct-fab { position: fixed; bottom: 20px; right: 16px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 50px; padding: 13px 20px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 18px rgba(249,115,22,0.45); display: flex; align-items: center; gap: 8px; z-index: 100; transition: transform 0.15s; }
+        .ct-fab:hover { transform: scale(1.04); }
+        .ct-fab-badge { background: white; color: #ea580c; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+        .ct-modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+        @media (min-width: 500px) { .ct-modal-ov { align-items: center; } }
+        .ct-modal { background: white; border-radius: 20px 20px 0 0; padding: 20px 16px 28px; width: 100%; max-width: 420px; }
+        @media (min-width: 500px) { .ct-modal { border-radius: 16px; } }
+        .ct-modal-title { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; font-weight: 600; color: #1c1008; margin-bottom: 2px; }
+        .ct-modal-sub { font-size: 0.75rem; color: #9a7a5c; margin-bottom: 14px; }
+        .ct-var-list { display: flex; flex-direction: column; gap: 7px; }
+        .ct-var-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: #faf8f5; border-radius: 10px; cursor: pointer; border: 1.5px solid transparent; transition: all 0.15s; }
+        .ct-var-row:hover { border-color: #f97316; background: #fff7f0; }
+        .ct-var-nombre { font-size: 0.88rem; font-weight: 500; color: #1c1008; }
+        .ct-var-precio { font-size: 0.85rem; font-weight: 700; color: #ea580c; }
+        .ct-modal-cancel { width: 100%; margin-top: 10px; padding: 10px; background: #f5f0e8; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; color: #9a7a5c; }
+
+        .ct-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; gap: 12px; color: #9a7a5c; font-style: italic; font-size: 0.88rem; }
+        .ct-spinner { width: 30px; height: 30px; border: 3px solid #f5f0e8; border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .c-no-results { grid-column: 1/-1; text-align: center; padding: 40px 16px; color: var(--texto-suave); }
-        .c-no-results h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: var(--texto); margin-bottom: 6px; }
-
-        /* Footer */
-        .c-footer { text-align: center; padding: 20px; color: var(--texto-suave); font-size: 0.72rem; border-top: 1px solid var(--hueso); background: white; }
+        .ct-footer { text-align: center; padding: 18px; color: #9a7a5c; font-size: 0.7rem; border-top: 1px solid #f5f0e8; background: #fff; }
       `}</style>
 
-      <div className="c-wrap">
-        {/* Hero */}
-        <div className="c-hero">
-          <img src={LOGO_URL} alt="Logo" className="c-logo" />
-          <h1 className="c-title">Charcutería Ramiz</h1>
-          <p className="c-sub">Catálogo de Productos</p>
-          <div className="c-search-wrap">
-            <span className="c-search-icon">🔍</span>
+      <div className="ct">
+        <div className="ct-hero">
+          <img src={LOGO_URL} alt="Logo" className="ct-logo" />
+          <h1 className="ct-title">Charcutería Ramiz</h1>
+          <p className="ct-sub">Catálogo de Productos</p>
+          <div className="ct-search-wrap">
+            <span className="ct-search-icon">🔍</span>
             <input
               type="text"
-              className="c-search"
+              className="ct-search"
               placeholder="Buscar producto..."
               value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
+              onChange={e => { setBusqueda(e.target.value); }}
             />
           </div>
         </div>
 
-        {/* Categorías */}
-        <div className="c-cats">
-          {categorias.map((c) => (
-            <button key={c} className={`c-chip${categoria === c ? " on" : ""}`} onClick={() => setCategoria(c)}>
-              {c}
-            </button>
-          ))}
-        </div>
-
-        {!loading && (
-          <p className="c-count">{filtrados.length} {filtrados.length === 1 ? "producto disponible" : "productos disponibles"}</p>
+        {/* Tabs de categoría */}
+        {!busqueda && (
+          <div className="ct-tabs">
+            {tabs.map(t => (
+              <button key={t} className={`ct-tab${tabActivo === t ? " on" : ""}`} onClick={() => setTabActivo(t)}>
+                {t}
+              </button>
+            ))}
+          </div>
         )}
 
-        {/* Grid */}
         {loading ? (
-          <div className="c-loading">
-            <div className="c-spinner" />
-            <span>Cargando catálogo...</span>
-          </div>
+          <div className="ct-loading"><div className="ct-spinner" /><span>Cargando catálogo...</span></div>
         ) : (
-          <div className="c-grid">
-            {filtrados.length === 0 ? (
-              <div className="c-no-results">
-                <h3>Sin resultados</h3>
-                <p>No encontramos productos con esa búsqueda.</p>
+          <div className="ct-body">
+            {Object.keys(grupos).sort().map(sub => (
+              <div key={sub}>
+                {Object.keys(grupos).length > 1 && <div className="ct-group-title">{sub}</div>}
+                <div className="ct-grid">
+                  {grupos[sub].map(p => {
+                    const esKg    = isKgCat(p.categoria);
+                    const presets = esKg ? PRESETS_KG : PRESETS_UNIT;
+                    const labels  = esKg ? LABEL_KG  : LABEL_UNIT;
+                    const curQty  = qtys[p.id] ?? getDefaultQty(p);
+                    const precio  = Number(p.variaciones.filter(v => Number(v.stock_actual??0)>0)[0]?.precio_venta_usd ?? p.precio_venta_usd ?? 0);
+
+                    return (
+                      <div key={p.id} className="ct-card">
+                        <div className="ct-img-wrap">
+                          {p.imagen_url
+                            ? <img src={p.imagen_url} alt={p.nombre} className="ct-img" loading="lazy" />
+                            : <div className="ct-img-ph">🥩</div>
+                          }
+                        </div>
+                        <div className="ct-body-card">
+                          <div className="ct-nombre">{p.nombre}</div>
+                          {precio > 0 && (
+                            <>
+                              <div className="ct-precio">
+                                {fmt(precio)} <span className="ct-precio-unit">/ {esKg ? "kg" : "u"}</span>
+                              </div>
+                              {tasa > 0 && (
+                                <div className="ct-precio-bs">Bs. {(precio * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</div>
+                              )}
+                            </>
+                          )}
+                          <div className="ct-presets">
+                            {presets.map((v, i) => (
+                              <button
+                                key={v}
+                                className={`ct-preset${curQty === v ? " on" : ""}`}
+                                onClick={() => setQtys(prev => ({ ...prev, [p.id]: v }))}
+                              >
+                                {labels[i]}
+                              </button>
+                            ))}
+                          </div>
+                          <button className="ct-add" onClick={() => handleAgregar(p)}>
+                            + Agregar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            ) : (
-              filtrados.map((p) => {
-                const precio = precioLabel(p);
-                const precioNum = Number(p.variaciones.filter(v => Number(v.stock_actual??0)>0)[0]?.precio_venta_usd ?? p.precio_venta_usd ?? 0);
-                return (
-                  <div key={p.id} className="c-card">
-                    <div className="c-img-wrap">
-                      {p.imagen_url
-                        ? <img src={p.imagen_url} alt={p.nombre} className="c-img" loading="lazy" />
-                        : <div className="c-img-ph">🥩</div>
-                      }
-                      {p.categoria && <span className="c-cat-tag">{p.categoria}</span>}
-                    </div>
-                    <div className="c-body">
-                      <div className="c-nombre">{p.nombre}</div>
-                      <div className="c-precio">{precio}</div>
-                      {tasa > 0 && precioNum > 0 && (
-                        <div className="c-precio-bs">Bs. {(precioNum * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</div>
-                      )}
-                      <button className="c-add-btn" onClick={() => handleAgregar(p)}>
-                        🛒 Agregar
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+            ))}
           </div>
         )}
 
-        <div className="c-footer">Charcutería Ramiz · Precios en USD · Bs al cambio BCV</div>
+        <div className="ct-footer">Charcutería Ramiz · Precios en USD · Bs al cambio BCV</div>
 
-        {/* FAB carrito */}
         {cartCount > 0 && (
-          <button className="c-fab" onClick={() => setCartOpen(true)}>
-            🛒 Ver pedido
-            <span className="c-fab-badge">{cartCount}</span>
+          <button className="ct-fab" onClick={() => setCartOpen(true)}>
+            🛒 Ver pedido <span className="ct-fab-badge">{cartCount}</span>
           </button>
         )}
 
-        {/* Cart drawer */}
-        {cartOpen && (
-          <>
-            <div className="c-overlay" onClick={() => setCartOpen(false)} />
-            <div className="c-drawer">
-              <div className="c-drawer-header">
-                <span className="c-drawer-title">Tu pedido</span>
-                <button className="c-close-btn" onClick={() => setCartOpen(false)}>✕</button>
-              </div>
-              <div className="c-drawer-items">
-                {cart.length === 0 ? (
-                  <div className="c-empty-cart">
-                    <div style={{ fontSize: "2rem" }}>🛒</div>
-                    <p>Tu carrito está vacío</p>
-                  </div>
-                ) : (
-                  cart.map((item) => (
-                    <div key={item.key} className="c-item">
-                      <div className="c-item-info">
-                        <div className="c-item-nombre">{item.nombre}</div>
-                        {item.variante && <div className="c-item-var">{item.variante}</div>}
-                        <div className="c-item-precio">{fmt(item.precio * item.qty)}</div>
-                      </div>
-                      <div className="c-qty">
-                        <button className="c-qty-btn" onClick={() => updateQty(item.key, -1)}>−</button>
-                        <span className="c-qty-num">{item.qty}</span>
-                        <button className="c-qty-btn" onClick={() => updateQty(item.key, 1)}>+</button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-              {cart.length > 0 && (
-                <div className="c-drawer-footer">
-                  <div className="c-total-row">
-                    <span className="c-total-label">Total</span>
-                    <div>
-                      <div className="c-total-val">{fmt(cartTotal)}</div>
-                      {tasa > 0 && (
-                        <div className="c-total-bs">Bs. {(cartTotal * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</div>
-                      )}
-                    </div>
-                  </div>
-                  <button className="c-wa-btn" onClick={sendWhatsApp}>
-                    <span>💬</span> Enviar pedido por WhatsApp
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
         {/* Modal variantes */}
-        {variantModal && (
-          <div className="c-modal-overlay" onClick={() => setVariantModal(null)}>
-            <div className="c-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="c-modal-title">{variantModal.nombre}</div>
-              <div className="c-modal-sub">Elige una variante</div>
-              <div className="c-var-list">
-                {variantModal.variaciones
-                  .filter((v) => Number(v.stock_actual ?? 0) > 0)
-                  .map((v) => (
-                    <div
-                      key={v.id}
-                      className="c-var-row"
-                      onClick={() => {
-                        addToCart(variantModal, v);
-                        setVariantModal(null);
-                      }}
-                    >
-                      <span className="c-var-nombre">{v.nombre}</span>
-                      <span className="c-var-precio">
-                        {v.precio_venta_usd ? fmt(Number(v.precio_venta_usd)) : "Consultar"}
-                      </span>
-                    </div>
-                  ))}
+        {varModal && (
+          <div className="ct-modal-ov" onClick={() => setVarModal(null)}>
+            <div className="ct-modal" onClick={e => e.stopPropagation()}>
+              <div className="ct-modal-title">{varModal.nombre}</div>
+              <div className="ct-modal-sub">Elige una variante — qty: {isKgCat(varModal.categoria) ? fmtKg(pendingQty) : pendingQty}</div>
+              <div className="ct-var-list">
+                {varModal.variaciones.filter(v => Number(v.stock_actual??0)>0).map(v => (
+                  <div key={v.id} className="ct-var-row" onClick={() => { addToCart(varModal, v, pendingQty); setVarModal(null); }}>
+                    <span className="ct-var-nombre">{v.nombre}</span>
+                    <span className="ct-var-precio">{v.precio_venta_usd ? fmt(Number(v.precio_venta_usd)) : "Consultar"}</span>
+                  </div>
+                ))}
               </div>
-              <button className="c-modal-cancel" onClick={() => setVariantModal(null)}>Cancelar</button>
+              <button className="ct-modal-cancel" onClick={() => setVarModal(null)}>Cancelar</button>
             </div>
           </div>
         )}
