@@ -513,7 +513,9 @@ export default function Catalogo() {
             )}
             {Object.keys(grupos).sort().map(sub => (
               <div key={sub}>
-                {Object.keys(grupos).length > 1 && <div className="ct-group-title">{sub}</div>}
+                {!(sub === "General" && Object.keys(grupos).length === 1) && (
+                  <div className="ct-group-title">{sub}</div>
+                )}
                 <div className="ct-grid">
                   {grupos[sub].map(p => {
                     const esKg   = isKgUnit(p.unidad);
