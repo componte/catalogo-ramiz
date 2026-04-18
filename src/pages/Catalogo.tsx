@@ -22,7 +22,7 @@ const LABEL_UNIT    = ["1","2","3","4","5","6"];
 
 type Variante = { id: string; nombre: string; precio_venta_usd: number | null; stock_actual: number | null };
 type Producto  = {
-  id: string; nombre: string; categoria: string | null; subcategoria: string | null;
+  id: string; nombre: string; categoria: string | null;
   imagen_url: string | null; precio_venta_usd: number | null; stock_actual: number | null;
   variaciones: Variante[];
 };
@@ -66,7 +66,7 @@ export default function Catalogo() {
         supabase.from("configuracion").select("value").eq("key", "tasa_bcv").single(),
         supabase
           .from("productos")
-          .select("id, nombre, categoria, subcategoria, imagen_url, precio_venta_usd, stock_actual")
+          .select("id, nombre, categoria, imagen_url, precio_venta_usd, stock_actual")
           .neq("activo", false)
           .order("nombre"),
         supabase.from("producto_variaciones").select("id, nombre, precio_venta_usd, stock_actual, producto_id"),
@@ -111,7 +111,7 @@ export default function Catalogo() {
   const grupos = useMemo(() => {
     const g: Record<string, Producto[]> = {};
     filtrados.forEach(p => {
-      const sub = p.subcategoria?.trim() || "General";
+      const sub = "General";
       if (!g[sub]) g[sub] = [];
       g[sub].push(p);
     });
