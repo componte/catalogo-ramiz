@@ -22,11 +22,12 @@ const LABEL_KG      = ["200g","250g","500g","1kg","1.5kg"];
 const LABEL_UNIT    = ["1","2","3","4","5","6"];
 const LABEL_EGGS    = ["½","1","2","3","4"];
 
-const isEgg = (nombre: string) => nombre.toLowerCase().includes("huevo");
+const isEgg   = (nombre: string) => nombre.toLowerCase().includes("huevo");
+const isKgUnit = (unidad: string | null) => (unidad || "").toLowerCase() === "kg";
 
 type Variante = { id: string; nombre: string; precio_venta_usd: number | null; stock_actual: number | null };
 type Producto  = {
-  id: string; nombre: string; categoria: string | null;
+  id: string; nombre: string; categoria: string | null; unidad: string | null;
   imagen_url: string | null; precio_venta_usd: number | null; stock_actual: number | null;
   variaciones: Variante[];
 };
@@ -38,7 +39,6 @@ type CartItem = {
 
 const fmt = (n: number) => `$${n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtKg = (q: number) => q >= 1 ? `${q} kg` : `${Math.round(q * 1000)}g`;
-const isKgCat = (cat: string | null) => (cat || "").toLowerCase().includes("charcutería") || (cat || "").toLowerCase().includes("charcuteria");
 
 export default function Catalogo() {
   const [productos, setProductos]   = useState<Producto[]>([]);
@@ -72,7 +72,7 @@ export default function Catalogo() {
         supabase.from("configuracion").select("value").eq("key", "tasa_bcv").single(),
         supabase
           .from("productos")
-          .select("id, nombre, categoria, imagen_url, precio_venta_usd, stock_actual")
+          .select("id, nombre, categoria, unidad, imagen_url, precio_venta_usd, stock_actual")
           .neq("activo", false)
           .order("nombre"),
         supabase.from("producto_variaciones").select("id, nombre, precio_venta_usd, stock_actual, producto_id"),
@@ -131,7 +131,7 @@ export default function Catalogo() {
 
   const getDefaultQty = (p: Producto) => {
     if (isEgg(p.nombre)) return 1;
-    return isKgCat(p.categoria) ? 0.5 : 1;
+    return isKgUnit(p.unidad) ? 0.5 : 1;
   };
 
   const resolveQty = (p: Producto): number => {
@@ -144,7 +144,7 @@ export default function Catalogo() {
   };
 
   const addToCart = (p: Producto, v?: Variante, qty?: number) => {
-    const esKg     = isKgCat(p.categoria) && !isEgg(p.nombre);
+    const esKg     = isKgUnit(p.unidad) && !isEgg(p.nombre);
     const key      = v ? `${p.id}__${v.id}` : p.id;
     const nombre   = p.nombre;
     const variante = v?.nombre ?? null;
@@ -447,7 +447,7 @@ export default function Catalogo() {
                 {Object.keys(grupos).length > 1 && <div className="ct-group-title">{sub}</div>}
                 <div className="ct-grid">
                   {grupos[sub].map(p => {
-                    const esKg   = isKgCat(p.categoria);
+                    const esKg   = isKgUnit(p.unidad);
                     const curQty = qtys[p.id] ?? getDefaultQty(p);
                     const precio = Number(p.variaciones.filter(v => Number(v.stock_actual??0)>0)[0]?.precio_venta_usd ?? p.precio_venta_usd ?? 0);
 
@@ -528,7 +528,7 @@ export default function Catalogo() {
           <div className="ct-modal-ov" onClick={() => setVarModal(null)}>
             <div className="ct-modal" onClick={e => e.stopPropagation()}>
               <div className="ct-modal-title">{varModal.nombre}</div>
-              <div className="ct-modal-sub">Elige una variante — qty: {isKgCat(varModal.categoria) ? fmtKg(pendingQty) : pendingQty}</div>
+              <div className="ct-modal-sub">Elige una variante — qty: {isKgUnit(varModal.unidad) ? fmtKg(pendingQty) : pendingQty}</div>
               <div className="ct-var-list">
                 {varModal.variaciones.filter(v => Number(v.stock_actual??0)>0).map(v => (
                   <div key={v.id} className="ct-var-row" onClick={() => { addToCart(varModal, v, pendingQty); setVarModal(null); }}>
