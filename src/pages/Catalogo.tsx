@@ -205,7 +205,7 @@ export default function Catalogo() {
         <style>{`
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
           body { background: #fff; font-family: 'DM Sans', sans-serif; }
-          .cp { min-height: 100vh; display: flex; flex-direction: column; background: #fff; font-family: 'DM Sans', sans-serif; }
+          .cp { height: 100dvh; height: 100vh; display: flex; flex-direction: column; background: #fff; font-family: 'DM Sans', sans-serif; overflow: hidden; }
           .cp-head { padding: 16px 16px 14px; border-bottom: 1px solid #f0ebe4; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; background: #fff; z-index: 10; }
           .cp-back { background: #fff7f0; border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; color: #ea580c; flex-shrink: 0; }
           .cp-back:hover { background: #ffedd5; }
@@ -222,8 +222,8 @@ export default function Catalogo() {
           .cp-qty-btn { background: #fff7f0; border: 1px solid #fde8d8; border-radius: 8px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; color: #ea580c; transition: background 0.1s; }
           .cp-qty-btn:hover { background: #ffedd5; }
           .cp-qty-num { font-size: 0.85rem; font-weight: 600; color: #1c1008; min-width: 36px; text-align: center; }
-          .cp-del { margin-left: auto; background: none; border: none; cursor: pointer; color: #d1ccc5; font-size: 1.1rem; padding: 2px; transition: color 0.1s; }
-          .cp-del:hover { color: #ef4444; }
+          .cp-del { margin-left: auto; background: none; border: none; cursor: pointer; color: #ef4444; font-size: 1.1rem; padding: 2px; transition: opacity 0.1s; }
+          .cp-del:hover { opacity: 0.7; }
           .cp-item-total { font-size: 0.88rem; font-weight: 700; color: #ea580c; white-space: nowrap; }
           .cp-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #9a7a5c; padding: 40px; }
           .cp-empty p { font-size: 0.9rem; }
@@ -533,7 +533,7 @@ export default function Catalogo() {
                 {varModal.variaciones.filter(v => Number(v.stock_actual??0)>0).map(v => (
                   <div key={v.id} className="ct-var-row" onClick={() => { addToCart(varModal, v, pendingQty); setVarModal(null); }}>
                     <span className="ct-var-nombre">{v.nombre}</span>
-                    <span className="ct-var-precio">{v.precio_venta_usd ? fmt(Number(v.precio_venta_usd)) : "Consultar"}</span>
+                    {v.precio_venta_usd ? <span className="ct-var-precio">{fmt(Number(v.precio_venta_usd))}</span> : null}
                   </div>
                 ))}
               </div>
