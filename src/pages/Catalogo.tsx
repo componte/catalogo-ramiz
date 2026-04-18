@@ -341,45 +341,41 @@ export default function Catalogo() {
                 ))
               )}
             </div>
-
-            {cart.length > 0 && (
-              <div className="cp-foot">
-                <button className="cp-add-more" onClick={() => setCartOpen(false)}>← Seguir agregando productos</button>
-                <hr className="cp-sep" />
-
-                <div className="cp-delivery-row">
-                  <input type="checkbox" className="cp-check" checked={delivery} onChange={e => setDelivery(e.target.checked)} id="del-check" />
-                  <label htmlFor="del-check" className="cp-delivery-label">Incluir Delivery</label>
-                </div>
-                {delivery && (
-                  <div className="cp-zones">
-                    {DELIVERY_ZONES.map(z => (
-                      <label key={z.id} className="cp-zone-row">
-                        <input type="radio" className="cp-zone-radio" name="zona" value={z.id} checked={zona === z.id} onChange={() => setZona(z.id)} />
-                        <span className="cp-zone-name">{z.name}</span>
-                        <span className="cp-zone-fee">+{fmt(z.fee)}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-
-                <div className="cp-totals">
-                  <div className="cp-row"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-                  {delivery && <div className="cp-row"><span>Delivery</span><span>{fmt(deliveryFee)}</span></div>}
-                  <div className="cp-total-row">
-                    <span>Total</span>
-                    <span>
-                      {fmt(total)}
-                      {tasa > 0 && <span className="cp-total-bs">/ Bs. {(total * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</span>}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {cart.length > 0 && (
             <div className="cp-wa-bar">
+              <button className="cp-add-more" onClick={() => setCartOpen(false)}>← Seguir agregando productos</button>
+              <hr className="cp-sep" />
+
+              <div className="cp-delivery-row">
+                <input type="checkbox" className="cp-check" checked={delivery} onChange={e => setDelivery(e.target.checked)} id="del-check" />
+                <label htmlFor="del-check" className="cp-delivery-label">Incluir Delivery</label>
+              </div>
+              {delivery && (
+                <div className="cp-zones">
+                  {DELIVERY_ZONES.map(z => (
+                    <label key={z.id} className="cp-zone-row">
+                      <input type="radio" className="cp-zone-radio" name="zona" value={z.id} checked={zona === z.id} onChange={() => setZona(z.id)} />
+                      <span className="cp-zone-name">{z.name}</span>
+                      <span className="cp-zone-fee">+{fmt(z.fee)}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              <div className="cp-totals">
+                <div className="cp-row"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+                {delivery && <div className="cp-row"><span>Delivery</span><span>{fmt(deliveryFee)}</span></div>}
+                <div className="cp-total-row">
+                  <span>Total</span>
+                  <span>
+                    {fmt(total)}
+                    {tasa > 0 && <span className="cp-total-bs">/ Bs. {(total * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</span>}
+                  </span>
+                </div>
+              </div>
+
               <button className="cp-wa" onClick={sendWhatsApp}>
                 <span>💬</span> ENVIAR PEDIDO POR WHATSAPP
               </button>
