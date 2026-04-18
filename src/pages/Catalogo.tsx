@@ -15,10 +15,14 @@ const DELIVERY_ZONES = [
   { id: "zafra", name: "La Zafra",                                               fee: 1.00 },
 ];
 
-const PRESETS_KG    = [0.1, 0.2, 0.25, 0.5, 1, 1.5];
+const PRESETS_KG    = [0.2, 0.25, 0.5, 1, 1.5];
 const PRESETS_UNIT  = [1, 2, 3, 4, 5, 6];
-const LABEL_KG      = ["100g","200g","250g","500g","1kg","1.5kg"];
+const PRESETS_EGGS  = [0.5, 1, 2, 3, 4];
+const LABEL_KG      = ["200g","250g","500g","1kg","1.5kg"];
 const LABEL_UNIT    = ["1","2","3","4","5","6"];
+const LABEL_EGGS    = ["½","1","2","3","4"];
+
+const isEgg = (nombre: string) => nombre.toLowerCase().includes("huevo");
 
 type Variante = { id: string; nombre: string; precio_venta_usd: number | null; stock_actual: number | null };
 type Producto  = {
@@ -45,6 +49,8 @@ export default function Catalogo() {
   const [cart, setCart]             = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen]     = useState(false);
   const [qtys, setQtys]             = useState<Record<string, number>>({});
+  const [manualMode, setManualMode] = useState<Record<string, boolean>>({});
+  const [manualVal, setManualVal]   = useState<Record<string, string>>({});
   const [varModal, setVarModal]     = useState<Producto | null>(null);
   const [pendingQty, setPendingQty] = useState(1);
   const [delivery, setDelivery]     = useState(true);
@@ -123,15 +129,27 @@ export default function Catalogo() {
   const deliveryFee = delivery ? (DELIVERY_ZONES.find(z => z.id === zona)?.fee ?? 0) : 0;
   const total       = subtotal + deliveryFee;
 
-  const getDefaultQty = (p: Producto) => isKgCat(p.categoria) ? 0.5 : 1;
+  const getDefaultQty = (p: Producto) => {
+    if (isEgg(p.nombre)) return 1;
+    return isKgCat(p.categoria) ? 0.5 : 1;
+  };
+
+  const resolveQty = (p: Producto): number => {
+    if (manualMode[p.id]) {
+      const raw = (manualVal[p.id] || "").trim();
+      const num = parseFloat(raw.replace(/[^\d.]/g, ""));
+      return isNaN(num) || num <= 0 ? getDefaultQty(p) : num;
+    }
+    return qtys[p.id] ?? getDefaultQty(p);
+  };
 
   const addToCart = (p: Producto, v?: Variante, qty?: number) => {
-    const esKg     = isKgCat(p.categoria);
+    const esKg     = isKgCat(p.categoria) && !isEgg(p.nombre);
     const key      = v ? `${p.id}__${v.id}` : p.id;
     const nombre   = p.nombre;
     const variante = v?.nombre ?? null;
     const precio   = Number(v?.precio_venta_usd ?? p.precio_venta_usd ?? 0);
-    const cantidad = qty ?? qtys[p.id] ?? getDefaultQty(p);
+    const cantidad = qty ?? resolveQty(p);
 
     setCart(prev => {
       const idx = prev.findIndex(i => i.key === key);
@@ -362,7 +380,11 @@ export default function Catalogo() {
         .ct-preset:hover { border-color: #f97316; color: #ea580c; }
         .ct-preset.on { background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border-color: transparent; }
 
-        .ct-add { margin-top: auto; padding-top: 6px; width: 100%; padding: 7px 4px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+        .ct-manual-input { width: 100%; margin-top: 4px; padding: 6px 8px; border: 1.5px solid #f97316; border-radius: 7px; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: #1c1008; outline: none; background: #fff7f0; }
+        .ct-manual-input::placeholder { color: #c4a882; }
+        .ct-custom-toggle { width: 100%; margin-top: 3px; padding: 4px; background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.65rem; color: #c4a882; cursor: pointer; text-align: center; }
+        .ct-custom-toggle:hover { color: #ea580c; }
+        .ct-add { width: 100%; padding: 7px 4px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; margin-top: 4px; }
         .ct-add:hover { opacity: 0.88; }
 
         .ct-fab { position: fixed; bottom: 20px; right: 16px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 50px; padding: 13px 20px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 18px rgba(249,115,22,0.45); display: flex; align-items: center; gap: 8px; z-index: 100; transition: transform 0.15s; }
@@ -425,11 +447,14 @@ export default function Catalogo() {
                 {Object.keys(grupos).length > 1 && <div className="ct-group-title">{sub}</div>}
                 <div className="ct-grid">
                   {grupos[sub].map(p => {
-                    const esKg    = isKgCat(p.categoria);
-                    const presets = esKg ? PRESETS_KG : PRESETS_UNIT;
-                    const labels  = esKg ? LABEL_KG  : LABEL_UNIT;
-                    const curQty  = qtys[p.id] ?? getDefaultQty(p);
-                    const precio  = Number(p.variaciones.filter(v => Number(v.stock_actual??0)>0)[0]?.precio_venta_usd ?? p.precio_venta_usd ?? 0);
+                    const esKg   = isKgCat(p.categoria);
+                    const curQty = qtys[p.id] ?? getDefaultQty(p);
+                    const precio = Number(p.variaciones.filter(v => Number(v.stock_actual??0)>0)[0]?.precio_venta_usd ?? p.precio_venta_usd ?? 0);
+
+                    const esHuevo  = isEgg(p.nombre);
+                    const presets  = esHuevo ? PRESETS_EGGS : (esKg ? PRESETS_KG : PRESETS_UNIT);
+                    const labels   = esHuevo ? LABEL_EGGS   : (esKg ? LABEL_KG   : LABEL_UNIT);
+                    const isManual = !!manualMode[p.id];
 
                     return (
                       <div key={p.id} className="ct-card">
@@ -444,24 +469,39 @@ export default function Catalogo() {
                           {precio > 0 && (
                             <>
                               <div className="ct-precio">
-                                {fmt(precio)} <span className="ct-precio-unit">/ {esKg ? "kg" : "u"}</span>
+                                {fmt(precio)} <span className="ct-precio-unit">/ {esKg && !esHuevo ? "kg" : "u"}</span>
                               </div>
                               {tasa > 0 && (
                                 <div className="ct-precio-bs">Bs. {(precio * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</div>
                               )}
                             </>
                           )}
-                          <div className="ct-presets">
-                            {presets.map((v, i) => (
-                              <button
-                                key={v}
-                                className={`ct-preset${curQty === v ? " on" : ""}`}
-                                onClick={() => setQtys(prev => ({ ...prev, [p.id]: v }))}
-                              >
-                                {labels[i]}
-                              </button>
-                            ))}
-                          </div>
+                          {isManual ? (
+                            <input
+                              className="ct-manual-input"
+                              placeholder={esKg && !esHuevo ? "ej: 0.75" : "ej: 3"}
+                              value={manualVal[p.id] || ""}
+                              onChange={e => setManualVal(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            />
+                          ) : (
+                            <div className="ct-presets">
+                              {presets.map((v, i) => (
+                                <button
+                                  key={v}
+                                  className={`ct-preset${curQty === v ? " on" : ""}`}
+                                  onClick={() => setQtys(prev => ({ ...prev, [p.id]: v }))}
+                                >
+                                  {labels[i]}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            className="ct-custom-toggle"
+                            onClick={() => setManualMode(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
+                          >
+                            {isManual ? "← Presets" : "Personalizar"}
+                          </button>
                           <button className="ct-add" onClick={() => handleAgregar(p)}>
                             + Agregar
                           </button>
