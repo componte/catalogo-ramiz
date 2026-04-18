@@ -26,8 +26,9 @@ const isEgg   = (nombre: string) => nombre.toLowerCase().includes("huevo");
 const isKgUnit = (unidad: string | null) => (unidad || "").toLowerCase() === "kg";
 
 type Variante = { id: string; nombre: string; precio_venta_usd: number | null; stock_actual: number | null };
+type CatPrincipal = { id: string; nombre: string };
 type Producto  = {
-  id: string; nombre: string; categoria: string | null; unidad: string | null;
+  id: string; nombre: string; categoria_id: string | null; unidad: string | null;
   subcategoria_nombre: string | null;
   imagen_url: string | null; precio_venta_usd: number | null; stock_actual: number | null;
   variaciones: Variante[];
@@ -47,6 +48,7 @@ export default function Catalogo() {
   const [loading, setLoading]       = useState(true);
   const [busqueda, setBusqueda]     = useState("");
   const [tabActivo, setTabActivo]   = useState("");
+  const [catsPrincipales, setCatsPrincipales] = useState<CatPrincipal[]>([]);
   const [cart, setCart]             = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen]     = useState(false);
   const [qtys, setQtys]             = useState<Record<string, number>>({});
@@ -69,17 +71,22 @@ export default function Catalogo() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: cfg }, { data: prods }, { data: vars }] = await Promise.all([
+      const [{ data: cfg }, { data: cats }, { data: prods }, { data: vars }] = await Promise.all([
         supabase.from("configuracion").select("value").eq("key", "tasa_bcv").single(),
+        supabase.from("categorias").select("id, nombre").order("nombre"),
         supabase
           .from("productos")
-          .select("id, nombre, categoria, unidad, imagen_url, precio_venta_usd, stock_actual, subcategorias(nombre)")
+          .select("id, nombre, categoria_id, unidad, imagen_url, precio_venta_usd, stock_actual, subcategorias(nombre)")
           .neq("activo", false)
           .order("nombre"),
         supabase.from("producto_variaciones").select("id, nombre, precio_venta_usd, stock_actual, producto_id"),
       ]);
 
       if (cfg?.value) setTasa(parseFloat(cfg.value));
+
+      const catsList = (cats || []) as CatPrincipal[];
+      setCatsPrincipales(catsList);
+      if (catsList.length) setTabActivo(catsList[0].id);
 
       const varMap: Record<string, Variante[]> = {};
       (vars || []).forEach((v: any) => {
@@ -96,21 +103,15 @@ export default function Catalogo() {
         });
 
       setProductos(lista as Producto[]);
-      const cats = Array.from(new Set(lista.map((p: any) => p.categoria || "Otros").filter(Boolean)));
-      if (cats.length) setTabActivo(cats[0]);
       setLoading(false);
     })();
   }, []);
 
-  const tabs = useMemo(() =>
-    Array.from(new Set(productos.map(p => p.categoria || "Otros"))).sort()
-  , [productos]);
-
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return productos.filter(p => {
-      const matchTab  = !q && (p.categoria || "Otros") === tabActivo;
-      const matchBusq = q && (p.nombre.toLowerCase().includes(q) || (p.categoria || "").toLowerCase().includes(q));
+      const matchTab  = !q && p.categoria_id === tabActivo;
+      const matchBusq = q && p.nombre.toLowerCase().includes(q);
       return matchTab || matchBusq;
     });
   }, [productos, tabActivo, busqueda]);
@@ -159,7 +160,7 @@ export default function Catalogo() {
         next[idx] = { ...next[idx], qty: next[idx].qty + cantidad };
         return next;
       }
-      return [...prev, { key, nombre, variante, precio, qty: cantidad, categoria: p.categoria || "", esKg }];
+      return [...prev, { key, nombre, variante, precio, qty: cantidad, categoria: p.categoria_id || "", esKg }];
     });
     setCartOpen(true);
   };
@@ -431,9 +432,9 @@ export default function Catalogo() {
         {/* Tabs de categoría */}
         {!busqueda && (
           <div className="ct-tabs">
-            {tabs.map(t => (
-              <button key={t} className={`ct-tab${tabActivo === t ? " on" : ""}`} onClick={() => setTabActivo(t)}>
-                {t}
+            {catsPrincipales.map(c => (
+              <button key={c.id} className={`ct-tab${tabActivo === c.id ? " on" : ""}`} onClick={() => setTabActivo(c.id)}>
+                {c.nombre}
               </button>
             ))}
           </div>
