@@ -22,8 +22,9 @@ const LABEL_KG      = ["200g","250g","500g","1kg","1.5kg"];
 const LABEL_UNIT    = ["1","2","3","4","5","6"];
 const LABEL_EGGS    = ["½","1","2","3","4"];
 
-const isEgg   = (nombre: string) => nombre.toLowerCase().includes("huevo");
+const isEgg    = (nombre: string) => nombre.toLowerCase().includes("huevo");
 const isKgUnit = (unidad: string | null) => (unidad || "").toLowerCase() === "kg";
+const CAT_ORDER = ["charcutería", "chucherías", "bebidas", "víveres"];
 
 type Variante = { id: string; nombre: string; precio_venta_usd: number | null; stock_actual: number | null };
 type CatPrincipal = { id: string; nombre: string };
@@ -58,6 +59,12 @@ export default function Catalogo() {
   const [pendingQty, setPendingQty] = useState(1);
   const [delivery, setDelivery]     = useState(true);
   const [zona, setZona]             = useState(DELIVERY_ZONES[0].id);
+  const [notif, setNotif]           = useState("");
+
+  const showNotif = (msg: string) => {
+    setNotif(msg);
+    setTimeout(() => setNotif(""), 3000);
+  };
 
   // persist cart
   useEffect(() => {
@@ -85,6 +92,11 @@ export default function Catalogo() {
       if (cfg?.value) setTasa(parseFloat(cfg.value));
 
       const catsList = (cats || []) as CatPrincipal[];
+      catsList.sort((a, b) => {
+        const ai = CAT_ORDER.findIndex(n => a.nombre.toLowerCase().includes(n));
+        const bi = CAT_ORDER.findIndex(n => b.nombre.toLowerCase().includes(n));
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      });
       setCatsPrincipales(catsList);
       if (catsList.length) setTabActivo(catsList[0].id);
 
@@ -153,12 +165,33 @@ export default function Catalogo() {
     const variante = v?.nombre ?? null;
     const precio   = Number(v?.precio_venta_usd ?? p.precio_venta_usd ?? 0);
     const cantidad = qty ?? resolveQty(p);
+    const stockRaw = v !== undefined ? v.stock_actual : p.stock_actual;
+    const stock    = stockRaw !== null ? Number(stockRaw) : null;
 
     setCart(prev => {
-      const idx = prev.findIndex(i => i.key === key);
+      const idx      = prev.findIndex(i => i.key === key);
+      const inCart   = idx >= 0 ? prev[idx].qty : 0;
+      const newTotal = +(inCart + cantidad).toFixed(3);
+
+      if (stock !== null && newTotal > stock) {
+        const restante = +(stock - inCart).toFixed(3);
+        const label    = esKg ? fmtKg(stock) : `${stock} unid`;
+        if (restante <= 0) {
+          setTimeout(() => showNotif(`Solo quedan ${label} y ya están en tu pedido.`), 0);
+          return prev;
+        }
+        setTimeout(() => showNotif(`Solo quedan ${label} disponibles. Se agregó lo que hay.`), 0);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], qty: stock };
+          return next;
+        }
+        return [...prev, { key, nombre, variante, precio, qty: restante, categoria: p.categoria_id || "", esKg }];
+      }
+
       if (idx >= 0) {
         const next = [...prev];
-        next[idx] = { ...next[idx], qty: next[idx].qty + cantidad };
+        next[idx] = { ...next[idx], qty: newTotal };
         return next;
       }
       return [...prev, { key, nombre, variante, precio, qty: cantidad, categoria: p.categoria_id || "", esKg }];
@@ -178,8 +211,23 @@ export default function Catalogo() {
     }
   };
 
-  const updateQty = (key: string, delta: number) =>
+  const updateQty = (key: string, delta: number) => {
+    if (delta > 0) {
+      const [prodId, varId] = key.split("__");
+      const prod = productos.find(p => p.id === prodId);
+      if (prod) {
+        const stockRaw = varId ? prod.variaciones.find(v => v.id === varId)?.stock_actual ?? null : prod.stock_actual;
+        const stock    = stockRaw !== null ? Number(stockRaw) : null;
+        const inCart   = cart.find(i => i.key === key)?.qty ?? 0;
+        if (stock !== null && inCart + delta > stock) {
+          const esKg = isKgUnit(prod.unidad) && !isEgg(prod.nombre);
+          showNotif(`Solo quedan ${esKg ? fmtKg(stock) : stock + " unid"} disponibles.`);
+          return;
+        }
+      }
+    }
     setCart(prev => prev.map(i => i.key === key ? { ...i, qty: Math.max(0, +(i.qty + delta).toFixed(2)) } : i).filter(i => i.qty > 0));
+  };
 
   const sendWhatsApp = () => {
     let msg = "*🛒 NUEVO PEDIDO — Charcutería Ramiz*\n\n";
@@ -209,12 +257,13 @@ export default function Catalogo() {
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
           body { background: #fff; font-family: 'DM Sans', sans-serif; }
           .cp { height: 100dvh; height: 100vh; display: flex; flex-direction: column; background: #fff; font-family: 'DM Sans', sans-serif; overflow: hidden; }
-          .cp-head { padding: 16px 16px 14px; border-bottom: 1px solid #f0ebe4; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; background: #fff; z-index: 10; }
+          .cp-head { padding: 16px 16px 14px; border-bottom: 1px solid #f0ebe4; display: flex; align-items: center; gap: 12px; flex-shrink: 0; background: #fff; z-index: 10; }
           .cp-back { background: #fff7f0; border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; color: #ea580c; flex-shrink: 0; }
           .cp-back:hover { background: #ffedd5; }
           .cp-head-title { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 600; color: #1c1008; flex: 1; }
           .cp-badge { background: #ea580c; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-          .cp-items { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 14px; }
+          .cp-scroll { flex: 1; overflow-y: auto; }
+          .cp-items { padding: 12px 16px; display: flex; flex-direction: column; gap: 14px; }
           .cp-item { display: flex; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #f5f0e8; }
           .cp-item:last-child { border-bottom: none; }
           .cp-item-info { flex: 1; min-width: 0; }
@@ -230,9 +279,11 @@ export default function Catalogo() {
           .cp-item-total { font-size: 0.88rem; font-weight: 700; color: #ea580c; white-space: nowrap; }
           .cp-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #9a7a5c; padding: 40px; }
           .cp-empty p { font-size: 0.9rem; }
-          .cp-foot { border-top: 1px solid #f0ebe4; padding: 16px; background: #fff; }
+          .cp-foot { padding: 16px; background: #fff; }
+          .cp-wa-bar { flex-shrink: 0; border-top: 2px solid #f0ebe4; padding: 12px 16px 16px; background: #fff; }
           .cp-add-more { width: 100%; padding: 11px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; margin-bottom: 14px; }
           .cp-add-more:hover { opacity: 0.92; }
+          .ct-notif { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #1c1008; color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.82rem; z-index: 999; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3); max-width: 90vw; text-align: center; }
           .cp-sep { border: none; border-top: 1px solid #f0ebe4; margin: 12px 0; }
           .cp-delivery-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
           .cp-delivery-label { font-size: 0.85rem; font-weight: 500; color: #1c1008; }
@@ -249,79 +300,86 @@ export default function Catalogo() {
           .cp-total-row { display: flex; justify-content: space-between; font-size: 1rem; font-weight: 700; padding-top: 8px; border-top: 1px solid #f0ebe4; margin-top: 4px; }
           .cp-total-row span:last-child { color: #ea580c; }
           .cp-total-bs { font-size: 0.72rem; font-weight: 400; color: #9a7a5c; margin-left: 4px; }
-          .cp-wa { width: 100%; padding: 16px; background: #16a34a; color: white; border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 14px; letter-spacing: 0.02em; transition: background 0.15s; }
+          .cp-wa { width: 100%; padding: 16px; background: #16a34a; color: white; border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 1.08rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: 0.02em; transition: background 0.15s; }
           .cp-wa:hover { background: #15803d; }
           .cp-wa-hint { text-align: center; font-size: 0.75rem; color: #9a7a5c; margin-top: 6px; }
         `}</style>
         <div className="cp">
+          {notif && <div className="ct-notif">{notif}</div>}
           <div className="cp-head">
             <button className="cp-back" onClick={() => setCartOpen(false)}>←</button>
             <span className="cp-head-title">Mi Pedido</span>
             {cartCount > 0 && <span className="cp-badge">{cartCount}</span>}
           </div>
 
-          <div className="cp-items">
-            {cart.length === 0 ? (
-              <div className="cp-empty">
-                <span style={{ fontSize: "2.5rem" }}>🛒</span>
-                <p>Tu carrito está vacío</p>
-                <button className="cp-add-more" onClick={() => setCartOpen(false)}>← Ver productos</button>
-              </div>
-            ) : (
-              cart.map(item => (
-                <div key={item.key} className="cp-item">
-                  <div className="cp-item-info">
-                    <div className="cp-item-nombre">{item.nombre}</div>
-                    {item.variante && <div className="cp-item-var">{item.variante}</div>}
-                    <div className="cp-item-precio">{fmt(item.precio)} / {item.esKg ? "kg" : "unid"}</div>
-                    <div className="cp-qty-row">
-                      <button className="cp-qty-btn" onClick={() => updateQty(item.key, item.esKg ? -0.1 : -1)}>−</button>
-                      <span className="cp-qty-num">{item.esKg ? fmtKg(item.qty) : item.qty}</span>
-                      <button className="cp-qty-btn" onClick={() => updateQty(item.key, item.esKg ? 0.1 : 1)}>+</button>
+          <div className="cp-scroll">
+            <div className="cp-items">
+              {cart.length === 0 ? (
+                <div className="cp-empty">
+                  <span style={{ fontSize: "2.5rem" }}>🛒</span>
+                  <p>Tu carrito está vacío</p>
+                  <button className="cp-add-more" onClick={() => setCartOpen(false)}>← Ver productos</button>
+                </div>
+              ) : (
+                cart.map(item => (
+                  <div key={item.key} className="cp-item">
+                    <div className="cp-item-info">
+                      <div className="cp-item-nombre">{item.nombre}</div>
+                      {item.variante && <div className="cp-item-var">{item.variante}</div>}
+                      <div className="cp-item-precio">{fmt(item.precio)} / {item.esKg ? "kg" : "unid"}</div>
+                      <div className="cp-qty-row">
+                        <button className="cp-qty-btn" onClick={() => updateQty(item.key, item.esKg ? -0.1 : -1)}>−</button>
+                        <span className="cp-qty-num">{item.esKg ? fmtKg(item.qty) : item.qty}</span>
+                        <button className="cp-qty-btn" onClick={() => updateQty(item.key, item.esKg ? 0.1 : 1)}>+</button>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between" }}>
+                      <button className="cp-del" onClick={() => setCart(prev => prev.filter(i => i.key !== item.key))}>🗑</button>
+                      <span className="cp-item-total">{fmt(item.precio * item.qty)}</span>
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between" }}>
-                    <button className="cp-del" onClick={() => setCart(prev => prev.filter(i => i.key !== item.key))}>🗑</button>
-                    <span className="cp-item-total">{fmt(item.precio * item.qty)}</span>
+                ))
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="cp-foot">
+                <button className="cp-add-more" onClick={() => setCartOpen(false)}>← Seguir agregando productos</button>
+                <hr className="cp-sep" />
+
+                <div className="cp-delivery-row">
+                  <input type="checkbox" className="cp-check" checked={delivery} onChange={e => setDelivery(e.target.checked)} id="del-check" />
+                  <label htmlFor="del-check" className="cp-delivery-label">Incluir Delivery</label>
+                </div>
+                {delivery && (
+                  <div className="cp-zones">
+                    {DELIVERY_ZONES.map(z => (
+                      <label key={z.id} className="cp-zone-row">
+                        <input type="radio" className="cp-zone-radio" name="zona" value={z.id} checked={zona === z.id} onChange={() => setZona(z.id)} />
+                        <span className="cp-zone-name">{z.name}</span>
+                        <span className="cp-zone-fee">+{fmt(z.fee)}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                <div className="cp-totals">
+                  <div className="cp-row"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+                  {delivery && <div className="cp-row"><span>Delivery</span><span>{fmt(deliveryFee)}</span></div>}
+                  <div className="cp-total-row">
+                    <span>Total</span>
+                    <span>
+                      {fmt(total)}
+                      {tasa > 0 && <span className="cp-total-bs">/ Bs. {(total * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</span>}
+                    </span>
                   </div>
                 </div>
-              ))
+              </div>
             )}
           </div>
 
           {cart.length > 0 && (
-            <div className="cp-foot">
-              <button className="cp-add-more" onClick={() => setCartOpen(false)}>← Seguir agregando productos</button>
-              <hr className="cp-sep" />
-
-              <div className="cp-delivery-row">
-                <input type="checkbox" className="cp-check" checked={delivery} onChange={e => setDelivery(e.target.checked)} id="del-check" />
-                <label htmlFor="del-check" className="cp-delivery-label">Incluir Delivery</label>
-              </div>
-              {delivery && (
-                <div className="cp-zones">
-                  {DELIVERY_ZONES.map(z => (
-                    <label key={z.id} className="cp-zone-row">
-                      <input type="radio" className="cp-zone-radio" name="zona" value={z.id} checked={zona === z.id} onChange={() => setZona(z.id)} />
-                      <span className="cp-zone-name">{z.name}</span>
-                      <span className="cp-zone-fee">+{fmt(z.fee)}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              <div className="cp-totals">
-                <div className="cp-row"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-                {delivery && <div className="cp-row"><span>Delivery</span><span>{fmt(deliveryFee)}</span></div>}
-                <div className="cp-total-row">
-                  <span>Total</span>
-                  <span>
-                    {fmt(total)}
-                    {tasa > 0 && <span className="cp-total-bs">/ Bs. {(total * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</span>}
-                  </span>
-                </div>
-              </div>
-
+            <div className="cp-wa-bar">
               <button className="cp-wa" onClick={sendWhatsApp}>
                 <span>💬</span> ENVIAR PEDIDO POR WHATSAPP
               </button>
@@ -367,7 +425,7 @@ export default function Catalogo() {
 
         .ct-card { background: #fff; border: 1px solid #f0ebe4; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow 0.15s; }
         .ct-card:hover { box-shadow: 0 4px 14px rgba(28,16,8,0.1); }
-        .ct-img-wrap { aspect-ratio: 1/1; background: #f5f0e8; overflow: hidden; position: relative; }
+        .ct-img-wrap { aspect-ratio: 4/3; background: #f5f0e8; overflow: hidden; position: relative; }
         .ct-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .ct-card:hover .ct-img { transform: scale(1.05); }
         .ct-img-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; background: linear-gradient(135deg, #f5f0e8 0%, #ede5d5 100%); }
@@ -411,9 +469,11 @@ export default function Catalogo() {
         .ct-spinner { width: 30px; height: 30px; border: 3px solid #f5f0e8; border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .ct-footer { text-align: center; padding: 18px; color: #9a7a5c; font-size: 0.7rem; border-top: 1px solid #f5f0e8; background: #fff; }
+        .ct-notif { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #1c1008; color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.82rem; z-index: 999; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3); max-width: 90vw; text-align: center; }
       `}</style>
 
       <div className="ct">
+        {notif && <div className="ct-notif">{notif}</div>}
         <div className="ct-hero">
           <div className="ct-logo-circle" />
           <div className="ct-hero-text">
