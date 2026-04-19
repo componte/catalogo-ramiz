@@ -25,7 +25,7 @@ const LABEL_EGGS    = ["½","1","2","3","4"];
 
 const isEgg    = (nombre: string) => nombre.toLowerCase().includes("huevo");
 const isKgUnit = (unidad: string | null) => (unidad || "").toLowerCase() === "kg";
-const CAT_ORDER = ["charcutería", "chucherías", "bebidas", "víveres"];
+const CAT_ORDER = ["charcutería", "chucherías", "bebidas", "víveres", "aseo", "licores"];
 
 type Variante = { id: string; nombre: string; precio_venta_usd: number | null; stock_actual: number | null };
 type CatPrincipal = { id: string; nombre: string };
@@ -272,9 +272,13 @@ export default function Catalogo() {
         .ct-search2:focus { border-color: #f97316; }
         .ct-search2::placeholder { color: #c4a882; }
         .ct-search-icon2 { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; pointer-events: none; }
-        .ct-tabs { display: flex; width: 100%; background: #fff; border-bottom: 2px solid #e8e0d5; }
-        .ct-tab { flex: 1; text-align: center; padding: 12px 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #7a6050; border-right: 1px solid #e8e0d5; position: relative; transition: color 0.18s, background 0.18s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ct-tabs-wrap { background: #fff; border-bottom: 2px solid #e8e0d5; }
+        .ct-tabs-row { display: flex; border-bottom: 1px solid #e8e0d5; }
+        .ct-tabs-row:last-child { border-bottom: none; justify-content: center; }
+        .ct-tab { flex: 1; text-align: center; padding: 11px 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #7a6050; border-right: 1px solid #e8e0d5; position: relative; transition: color 0.18s, background 0.18s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 33.333%; }
         .ct-tab:last-child { border-right: none; }
+        .ct-tabs-row:last-child .ct-tab { border-right: 1px solid #e8e0d5; }
+        .ct-tabs-row:last-child .ct-tab:last-child { border-right: none; }
         .ct-tab::after { content: ''; position: absolute; bottom: -2px; left: 50%; width: 0; height: 3px; background: linear-gradient(90deg, #f97316, #f59e0b); transform: translateX(-50%); transition: width 0.22s ease; border-radius: 2px 2px 0 0; }
         .ct-tab:hover { color: #ea580c; background: #fff7f0; }
         .ct-tab.on { color: #ea580c; font-weight: 700; }
@@ -435,11 +439,15 @@ export default function Catalogo() {
         </div>
 
         {!busqueda && (
-          <div className="ct-tabs">
-            {catsPrincipales.map(c => (
-              <button key={c.id} className={`ct-tab${tabActivo === c.id ? " on" : ""}`} onClick={() => setTabActivo(c.id)}>
-                {c.nombre}
-              </button>
+          <div className="ct-tabs-wrap">
+            {[catsPrincipales.slice(0, 3), catsPrincipales.slice(3)].filter(row => row.length > 0).map((row, ri) => (
+              <div key={ri} className="ct-tabs-row">
+                {row.map(c => (
+                  <button key={c.id} className={`ct-tab${tabActivo === c.id ? " on" : ""}`} onClick={() => setTabActivo(c.id)}>
+                    {c.nombre}
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
         )}
