@@ -266,11 +266,11 @@ export default function Catalogo() {
         .ct-search2:focus { border-color: #f97316; }
         .ct-search2::placeholder { color: #c4a882; }
         .ct-search-icon2 { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; pointer-events: none; }
-        .ct-tabs { display: flex; gap: 0; border-bottom: 2px solid #f5f0e8; background: #fff; overflow-x: auto; scrollbar-width: none; }
+        .ct-tabs { display: flex; gap: 8px; padding: 10px 12px; background: #fff; border-bottom: 1px solid #f0ebe4; overflow-x: auto; scrollbar-width: none; }
         .ct-tabs::-webkit-scrollbar { display: none; }
-        .ct-tab { flex: 1; min-width: 70px; padding: 12px 8px; font-size: 0.88rem; font-weight: 500; text-align: center; cursor: pointer; border: none; background: none; color: #9a7a5c; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
-        .ct-tab:hover { color: #ea580c; background: #fff7f0; }
-        .ct-tab.on { color: #ea580c; border-bottom-color: #ea580c; font-weight: 600; }
+        .ct-tab { flex: 1; min-width: 80px; padding: 10px 10px; font-size: 0.92rem; font-weight: 600; text-align: center; cursor: pointer; border: 2px solid #f0ebe4; border-radius: 50px; background: #faf8f5; color: #9a7a5c; white-space: nowrap; transition: all 0.18s; letter-spacing: 0.01em; }
+        .ct-tab:hover { border-color: #f97316; color: #ea580c; background: #fff7f0; }
+        .ct-tab.on { background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border-color: transparent; box-shadow: 0 3px 10px rgba(249,115,22,0.35); }
 
         .ct-body { padding: 12px 12px 110px; max-width: 700px; margin: 0 auto; }
         .ct-group-title { font-size: 0.88rem; font-weight: 600; color: #9a7a5c; letter-spacing: 0.08em; text-transform: uppercase; padding: 16px 0 8px; border-bottom: 1px solid #f5f0e8; margin-bottom: 10px; }
