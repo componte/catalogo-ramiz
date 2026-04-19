@@ -266,11 +266,13 @@ export default function Catalogo() {
         .ct-search2:focus { border-color: #f97316; }
         .ct-search2::placeholder { color: #c4a882; }
         .ct-search-icon2 { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; pointer-events: none; }
-        .ct-tabs { display: flex; gap: 7px; padding: 10px 12px; background: #fff; border-bottom: 1px solid #f0ebe4; overflow-x: auto; scrollbar-width: none; }
-        .ct-tabs::-webkit-scrollbar { display: none; }
-        .ct-tab { flex-shrink: 0; padding: 9px 16px; font-size: 0.88rem; font-weight: 600; text-align: center; cursor: pointer; border: 2px solid #e8e0d5; border-radius: 50px; background: #faf8f5; color: #7a6050; white-space: nowrap; transition: all 0.18s; }
-        .ct-tab:hover { border-color: #f97316; color: #ea580c; background: #fff7f0; }
-        .ct-tab.on { background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border-color: transparent; box-shadow: 0 3px 10px rgba(249,115,22,0.35); }
+        .ct-tabs { display: flex; width: 100%; background: #fff; border-bottom: 2px solid #e8e0d5; }
+        .ct-tab { flex: 1; text-align: center; padding: 12px 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #7a6050; border-right: 1px solid #e8e0d5; position: relative; transition: color 0.18s, background 0.18s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ct-tab:last-child { border-right: none; }
+        .ct-tab::after { content: ''; position: absolute; bottom: -2px; left: 50%; width: 0; height: 3px; background: linear-gradient(90deg, #f97316, #f59e0b); transform: translateX(-50%); transition: width 0.22s ease; border-radius: 2px 2px 0 0; }
+        .ct-tab:hover { color: #ea580c; background: #fff7f0; }
+        .ct-tab.on { color: #ea580c; font-weight: 700; }
+        .ct-tab.on::after { width: 70%; }
 
         .ct-body { padding: 12px 12px 110px; max-width: 700px; margin: 0 auto; }
         .ct-group-title { font-size: 0.88rem; font-weight: 600; color: #9a7a5c; letter-spacing: 0.08em; text-transform: uppercase; padding: 16px 0 8px; border-bottom: 1px solid #f5f0e8; margin-bottom: 10px; }
