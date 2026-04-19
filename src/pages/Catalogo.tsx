@@ -10,9 +10,10 @@ const LOGO_URL = "https://res.cloudinary.com/dpfk35vqc/image/upload/v1775250448/
 const WHATSAPP_NUMBER = "584141291930";
 
 const DELIVERY_ZONES = [
-  { id: "th",    name: "Las Terrazas TH",                                        fee: 0.40 },
-  { id: "otros", name: "Tejados, Arado, Laguna, Casablanca, Panelas, Terrazas Edif", fee: 0.80 },
-  { id: "zafra", name: "La Zafra",                                               fee: 1.00 },
+  { id: "th",     name: "Terrazas Amarillas / Azules / Verdes",                   fee: 0.40 },
+  { id: "otros",  name: "Laguna · Arado · Tejados · Casablanca · Terrazas Edif", fee: 0.80 },
+  { id: "zafra",  name: "La Zafra · Panelas · Otros sectores",                   fee: 1.00 },
+  { id: "retiro", name: "Sin delivery — Retiro directo",                          fee: 0.00 },
 ];
 
 const PRESETS_KG    = [0.2, 0.25, 0.5, 1, 1.5];
@@ -57,8 +58,9 @@ export default function Catalogo() {
   const [manualVal, setManualVal]   = useState<Record<string, string>>({});
   const [varModal, setVarModal]     = useState<Producto | null>(null);
   const [pendingQty, setPendingQty] = useState(1);
-  const [delivery, setDelivery]     = useState(true);
   const [zona, setZona]             = useState(DELIVERY_ZONES[0].id);
+  const [deliveryModal, setDeliveryModal] = useState(false);
+  const [cartQtyEdit, setCartQtyEdit] = useState<Record<string, string>>({});
   const [notif, setNotif]           = useState("");
 
   const showNotif = (msg: string) => {
@@ -138,10 +140,8 @@ export default function Catalogo() {
     return g;
   }, [filtrados]);
 
-  const cartCount   = useMemo(() => cart.reduce((a, i) => a + i.qty, 0), [cart]);
-  const subtotal    = useMemo(() => cart.reduce((a, i) => a + i.precio * i.qty, 0), [cart]);
-  const deliveryFee = delivery ? (DELIVERY_ZONES.find(z => z.id === zona)?.fee ?? 0) : 0;
-  const total       = subtotal + deliveryFee;
+  const cartCount = useMemo(() => cart.reduce((a, i) => a + i.qty, 0), [cart]);
+  const subtotal  = useMemo(() => cart.reduce((a, i) => a + i.precio * i.qty, 0), [cart]);
 
   const getDefaultQty = (p: Producto) => {
     if (isEgg(p.nombre)) return 1;
@@ -228,7 +228,11 @@ export default function Catalogo() {
     setCart(prev => prev.map(i => i.key === key ? { ...i, qty: Math.max(0, +(i.qty + delta).toFixed(2)) } : i).filter(i => i.qty > 0));
   };
 
-  const sendWhatsApp = () => {
+  const sendWhatsApp = (zoneId: string) => {
+    const zone = DELIVERY_ZONES.find(z => z.id === zoneId);
+    const fee  = zone?.fee ?? 0;
+    const tot  = subtotal + fee;
+    const tieneKg = cart.some(i => i.esKg);
     let msg = "*🛒 NUEVO PEDIDO — Charcutería Ramiz*\n\n";
     cart.forEach(i => {
       const qty = i.esKg ? fmtKg(i.qty) : `${i.qty} unid`;
@@ -237,13 +241,15 @@ export default function Catalogo() {
     });
     msg += "─────────────────\n";
     msg += `Subtotal: ${fmt(subtotal)}\n`;
-    if (delivery) {
-      const z = DELIVERY_ZONES.find(z => z.id === zona);
-      msg += `Delivery (${z?.name}): ${fmt(deliveryFee)}\n`;
+    if (zoneId === "retiro") {
+      msg += `Delivery: Sin delivery — Retiro directo\n`;
+    } else {
+      msg += `Delivery (${zone?.name}): ${fmt(fee)}\n`;
     }
     msg += `─────────────────\n`;
-    msg += `*TOTAL: ${fmt(total)}*`;
-    if (tasa > 0) msg += ` / Bs. ${(total * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}`;
+    msg += `*TOTAL: ${fmt(tot)}*`;
+    if (tasa > 0) msg += ` / Bs. ${(tot * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}`;
+    if (tieneKg) msg += `\n\n⚠️ _Nota: El monto total es aproximado._ Los productos vendidos por peso serán confirmados al pesarse.`;
     msg += `\n\n✅ Por favor confírmenme disponibilidad.`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
   };
@@ -337,7 +343,8 @@ export default function Catalogo() {
         .cd-qty-row { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
         .cd-qty-btn { background: #fff7f0; border: 1.5px solid #fde8d8; border-radius: 8px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem; color: #ea580c; transition: background 0.1s; flex-shrink: 0; }
         .cd-qty-btn:hover { background: #ffedd5; }
-        .cd-qty-num { font-size: 0.95rem; font-weight: 700; color: #1c1008; min-width: 44px; text-align: center; }
+        .cd-qty-input { font-size: 0.95rem; font-weight: 700; color: #1c1008; min-width: 52px; max-width: 64px; text-align: center; border: 1.5px solid #fde8d8; border-radius: 7px; padding: 5px 2px; font-family: 'DM Sans', sans-serif; background: #fff7f0; outline: none; }
+        .cd-qty-input:focus { border-color: #f97316; }
         .cd-item-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 8px; }
         .cd-del { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 1.1rem; padding: 2px; transition: opacity 0.1s; }
         .cd-del:hover { opacity: 0.7; }
@@ -388,6 +395,21 @@ export default function Catalogo() {
         @keyframes spin { to { transform: rotate(360deg); } }
         .ct-footer { text-align: center; padding: 18px; color: #9a7a5c; font-size: 0.7rem; border-top: 1px solid #f5f0e8; background: #fff; }
         .ct-notif { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #1c1008; color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.82rem; z-index: 999; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3); max-width: 90vw; text-align: center; }
+
+        /* Delivery modal */
+        .dm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 250; display: flex; align-items: flex-end; justify-content: center; }
+        @media (min-width: 500px) { .dm-overlay { align-items: center; } }
+        .dm-modal { background: white; border-radius: 20px 20px 0 0; padding: 20px 16px 28px; width: 100%; max-width: 440px; }
+        @media (min-width: 500px) { .dm-modal { border-radius: 16px; } }
+        .dm-title { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 600; color: #1c1008; margin-bottom: 4px; }
+        .dm-sub { font-size: 0.78rem; color: #9a7a5c; margin-bottom: 16px; }
+        .dm-options { display: flex; flex-direction: column; gap: 8px; }
+        .dm-option { width: 100%; padding: 14px 16px; background: #faf8f5; border: 1.5px solid #f0ebe4; border-radius: 12px; cursor: pointer; text-align: left; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+        .dm-option:hover { border-color: #f97316; background: #fff7f0; }
+        .dm-option-info { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .dm-option-name { font-size: 0.88rem; font-weight: 500; color: #1c1008; flex: 1; }
+        .dm-option-fee { font-size: 0.92rem; font-weight: 700; color: #ea580c; flex-shrink: 0; }
+        .dm-cancel { width: 100%; margin-top: 10px; padding: 11px; background: #f5f0e8; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; color: #9a7a5c; }
       `}</style>
 
       <div className="ct">
@@ -550,9 +572,22 @@ export default function Catalogo() {
                         {item.variante && <div className="cd-item-var">{item.variante}</div>}
                         <div className="cd-item-precio">{fmt(item.precio)} / {item.esKg ? "kg" : "unid"}</div>
                         <div className="cd-qty-row">
-                          <button className="cd-qty-btn" onClick={() => updateQty(item.key, item.esKg ? -0.1 : -1)}>−</button>
-                          <span className="cd-qty-num">{item.esKg ? fmtKg(item.qty) : item.qty}</span>
-                          <button className="cd-qty-btn" onClick={() => updateQty(item.key, item.esKg ? 0.1 : 1)}>+</button>
+                          <button className="cd-qty-btn" onClick={() => { updateQty(item.key, item.esKg ? -0.1 : -1); setCartQtyEdit(p => { const n = {...p}; delete n[item.key]; return n; }); }}>−</button>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="cd-qty-input"
+                            value={cartQtyEdit[item.key] !== undefined ? cartQtyEdit[item.key] : (item.esKg ? fmtKg(item.qty) : String(item.qty))}
+                            onChange={e => setCartQtyEdit(prev => ({ ...prev, [item.key]: e.target.value }))}
+                            onFocus={e => { setCartQtyEdit(prev => ({ ...prev, [item.key]: String(item.qty) })); e.target.select(); }}
+                            onBlur={() => {
+                              const raw = cartQtyEdit[item.key] ?? "";
+                              const num = parseFloat(raw.replace(/[^\d.]/g, ""));
+                              if (!isNaN(num) && num > 0) setCart(prev => prev.map(i => i.key === item.key ? { ...i, qty: +(num.toFixed(3)) } : i).filter(i => i.qty > 0));
+                              setCartQtyEdit(prev => { const n = {...prev}; delete n[item.key]; return n; });
+                            }}
+                          />
+                          <button className="cd-qty-btn" onClick={() => { updateQty(item.key, item.esKg ? 0.1 : 1); setCartQtyEdit(p => { const n = {...p}; delete n[item.key]; return n; }); }}>+</button>
                         </div>
                       </div>
                       <div className="cd-item-right">
@@ -569,41 +604,42 @@ export default function Catalogo() {
               <div className="cd-foot">
                 <button className="cd-seguir" onClick={() => setCartOpen(false)}>← Seguir agregando productos</button>
                 <hr className="cd-sep" />
-
-                <div className="cd-delivery-row">
-                  <input type="checkbox" className="cd-check" checked={delivery} onChange={e => setDelivery(e.target.checked)} id="del-check" />
-                  <label htmlFor="del-check" className="cd-delivery-label">Incluir Delivery</label>
-                </div>
-                {delivery && (
-                  <div className="cd-zones">
-                    {DELIVERY_ZONES.map(z => (
-                      <label key={z.id} className="cd-zone-row">
-                        <input type="radio" className="cd-zone-radio" name="zona" value={z.id} checked={zona === z.id} onChange={() => setZona(z.id)} />
-                        <span className="cd-zone-name">{z.name}</span>
-                        <span className="cd-zone-fee">+{fmt(z.fee)}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-
                 <div className="cd-totals">
-                  <div className="cd-row"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-                  {delivery && <div className="cd-row"><span>Delivery</span><span>{fmt(deliveryFee)}</span></div>}
                   <div className="cd-total-row">
-                    <span>Total</span>
+                    <span>Subtotal</span>
                     <span>
-                      {fmt(total)}
-                      {tasa > 0 && <span className="cd-total-bs">/ Bs. {(total * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</span>}
+                      {fmt(subtotal)}
+                      {tasa > 0 && <span className="cd-total-bs">/ Bs. {(subtotal * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</span>}
                     </span>
                   </div>
                 </div>
-
-                <button className="cd-wa" onClick={sendWhatsApp}>
+                <button className="cd-wa" onClick={() => setDeliveryModal(true)}>
                   <span>💬</span> ENVIAR PEDIDO POR WHATSAPP
                 </button>
-                <p className="cd-wa-hint">Se abrirá WhatsApp para enviarnos tu pedido</p>
+                <p className="cd-wa-hint">Elegirás tu sector de delivery al confirmar</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Delivery modal */}
+      {deliveryModal && (
+        <div className="dm-overlay" onClick={() => setDeliveryModal(false)}>
+          <div className="dm-modal" onClick={e => e.stopPropagation()}>
+            <div className="dm-title">¿Cómo recibirás tu pedido?</div>
+            <div className="dm-sub">Selecciona tu sector para incluir el costo de delivery</div>
+            <div className="dm-options">
+              {DELIVERY_ZONES.map(z => (
+                <button key={z.id} className="dm-option" onClick={() => { setDeliveryModal(false); sendWhatsApp(z.id); }}>
+                  <div className="dm-option-info">
+                    <span className="dm-option-name">{z.name}</span>
+                    <span className="dm-option-fee">{z.fee > 0 ? `+${fmt(z.fee)}` : "Gratis"}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button className="dm-cancel" onClick={() => setDeliveryModal(false)}>Cancelar</button>
           </div>
         </div>
       )}
