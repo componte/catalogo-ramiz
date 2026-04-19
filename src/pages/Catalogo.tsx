@@ -66,7 +66,6 @@ export default function Catalogo() {
     setTimeout(() => setNotif(""), 3000);
   };
 
-  // persist cart
   useEffect(() => {
     const saved = localStorage.getItem("cart_ramiz");
     if (saved) { try { setCart(JSON.parse(saved)); } catch {} }
@@ -249,145 +248,6 @@ export default function Catalogo() {
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
-  // ── CART PAGE ──────────────────────────────────────────────────────────────
-  if (cartOpen) {
-    return (
-      <>
-        <style>{`
-          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-          body { background: #fff; font-family: 'DM Sans', sans-serif; }
-          .cp { height: 100dvh; height: 100vh; display: flex; flex-direction: column; background: #fff; font-family: 'DM Sans', sans-serif; overflow: hidden; }
-          .cp-head { padding: 16px 16px 14px; border-bottom: 1px solid #f0ebe4; display: flex; align-items: center; gap: 12px; flex-shrink: 0; background: #fff; z-index: 10; }
-          .cp-back { background: #fff7f0; border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; color: #ea580c; flex-shrink: 0; }
-          .cp-back:hover { background: #ffedd5; }
-          .cp-head-title { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 600; color: #1c1008; flex: 1; }
-          .cp-badge { background: #ea580c; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-          .cp-scroll { flex: 1; overflow-y: auto; }
-          .cp-items { padding: 12px 16px; display: flex; flex-direction: column; gap: 14px; }
-          .cp-item { display: flex; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #f5f0e8; }
-          .cp-item:last-child { border-bottom: none; }
-          .cp-item-info { flex: 1; min-width: 0; }
-          .cp-item-nombre { font-size: 0.88rem; font-weight: 500; color: #1c1008; }
-          .cp-item-var { font-size: 0.72rem; color: #9a7a5c; margin-top: 1px; }
-          .cp-item-precio { font-size: 0.82rem; font-weight: 600; color: #ea580c; margin-top: 4px; }
-          .cp-qty-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-          .cp-qty-btn { background: #fff7f0; border: 1px solid #fde8d8; border-radius: 8px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; color: #ea580c; transition: background 0.1s; }
-          .cp-qty-btn:hover { background: #ffedd5; }
-          .cp-qty-num { font-size: 0.85rem; font-weight: 600; color: #1c1008; min-width: 36px; text-align: center; }
-          .cp-del { margin-left: auto; background: none; border: none; cursor: pointer; color: #ef4444; font-size: 1.1rem; padding: 2px; transition: opacity 0.1s; }
-          .cp-del:hover { opacity: 0.7; }
-          .cp-item-total { font-size: 0.88rem; font-weight: 700; color: #ea580c; white-space: nowrap; }
-          .cp-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #9a7a5c; padding: 40px; }
-          .cp-empty p { font-size: 0.9rem; }
-          .cp-foot { padding: 16px; background: #fff; }
-          .cp-wa-bar { flex-shrink: 0; border-top: 2px solid #f0ebe4; padding: 12px 16px 16px; background: #fff; }
-          .cp-add-more { width: 100%; padding: 11px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; margin-bottom: 14px; }
-          .cp-add-more:hover { opacity: 0.92; }
-          .ct-notif { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #1c1008; color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.82rem; z-index: 999; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3); max-width: 90vw; text-align: center; }
-          .cp-sep { border: none; border-top: 1px solid #f0ebe4; margin: 12px 0; }
-          .cp-delivery-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-          .cp-delivery-label { font-size: 0.85rem; font-weight: 500; color: #1c1008; }
-          .cp-check { accent-color: #ea580c; width: 16px; height: 16px; cursor: pointer; }
-          .cp-zones { display: flex; flex-direction: column; gap: 6px; padding-left: 24px; margin-bottom: 12px; }
-          .cp-zone-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-          .cp-zone-radio { accent-color: #ea580c; width: 15px; height: 15px; cursor: pointer; }
-          .cp-zone-name { font-size: 0.78rem; color: #5c4a3a; flex: 1; }
-          .cp-zone-fee { font-size: 0.78rem; font-weight: 600; color: #ea580c; }
-          .cp-totals { display: flex; flex-direction: column; gap: 6px; }
-          .cp-row { display: flex; justify-content: space-between; font-size: 0.85rem; }
-          .cp-row span:first-child { color: #9a7a5c; }
-          .cp-row span:last-child { font-weight: 500; color: #1c1008; }
-          .cp-total-row { display: flex; justify-content: space-between; font-size: 1rem; font-weight: 700; padding-top: 8px; border-top: 1px solid #f0ebe4; margin-top: 4px; }
-          .cp-total-row span:last-child { color: #ea580c; }
-          .cp-total-bs { font-size: 0.72rem; font-weight: 400; color: #9a7a5c; margin-left: 4px; }
-          .cp-wa { width: 100%; padding: 16px; background: #16a34a; color: white; border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 1.08rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: 0.02em; transition: background 0.15s; }
-          .cp-wa:hover { background: #15803d; }
-          .cp-wa-hint { text-align: center; font-size: 0.75rem; color: #9a7a5c; margin-top: 6px; }
-        `}</style>
-        <div className="cp">
-          {notif && <div className="ct-notif">{notif}</div>}
-          <div className="cp-head">
-            <button className="cp-back" onClick={() => setCartOpen(false)}>←</button>
-            <span className="cp-head-title">Mi Pedido</span>
-            {cartCount > 0 && <span className="cp-badge">{cartCount}</span>}
-          </div>
-
-          <div className="cp-scroll">
-            <div className="cp-items">
-              {cart.length === 0 ? (
-                <div className="cp-empty">
-                  <span style={{ fontSize: "2.5rem" }}>🛒</span>
-                  <p>Tu carrito está vacío</p>
-                  <button className="cp-add-more" onClick={() => setCartOpen(false)}>← Ver productos</button>
-                </div>
-              ) : (
-                cart.map(item => (
-                  <div key={item.key} className="cp-item">
-                    <div className="cp-item-info">
-                      <div className="cp-item-nombre">{item.nombre}</div>
-                      {item.variante && <div className="cp-item-var">{item.variante}</div>}
-                      <div className="cp-item-precio">{fmt(item.precio)} / {item.esKg ? "kg" : "unid"}</div>
-                      <div className="cp-qty-row">
-                        <button className="cp-qty-btn" onClick={() => updateQty(item.key, item.esKg ? -0.1 : -1)}>−</button>
-                        <span className="cp-qty-num">{item.esKg ? fmtKg(item.qty) : item.qty}</span>
-                        <button className="cp-qty-btn" onClick={() => updateQty(item.key, item.esKg ? 0.1 : 1)}>+</button>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between" }}>
-                      <button className="cp-del" onClick={() => setCart(prev => prev.filter(i => i.key !== item.key))}>🗑</button>
-                      <span className="cp-item-total">{fmt(item.precio * item.qty)}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {cart.length > 0 && (
-            <div className="cp-wa-bar">
-              <button className="cp-add-more" onClick={() => setCartOpen(false)}>← Seguir agregando productos</button>
-              <hr className="cp-sep" />
-
-              <div className="cp-delivery-row">
-                <input type="checkbox" className="cp-check" checked={delivery} onChange={e => setDelivery(e.target.checked)} id="del-check" />
-                <label htmlFor="del-check" className="cp-delivery-label">Incluir Delivery</label>
-              </div>
-              {delivery && (
-                <div className="cp-zones">
-                  {DELIVERY_ZONES.map(z => (
-                    <label key={z.id} className="cp-zone-row">
-                      <input type="radio" className="cp-zone-radio" name="zona" value={z.id} checked={zona === z.id} onChange={() => setZona(z.id)} />
-                      <span className="cp-zone-name">{z.name}</span>
-                      <span className="cp-zone-fee">+{fmt(z.fee)}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              <div className="cp-totals">
-                <div className="cp-row"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-                {delivery && <div className="cp-row"><span>Delivery</span><span>{fmt(deliveryFee)}</span></div>}
-                <div className="cp-total-row">
-                  <span>Total</span>
-                  <span>
-                    {fmt(total)}
-                    {tasa > 0 && <span className="cp-total-bs">/ Bs. {(total * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</span>}
-                  </span>
-                </div>
-              </div>
-
-              <button className="cp-wa" onClick={sendWhatsApp}>
-                <span>💬</span> ENVIAR PEDIDO POR WHATSAPP
-              </button>
-              <p className="cp-wa-hint">Se abrirá WhatsApp para enviarnos tu pedido</p>
-            </div>
-          )}
-        </div>
-      </>
-    );
-  }
-
-  // ── CATALOG PAGE ───────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
@@ -408,46 +268,106 @@ export default function Catalogo() {
         .ct-search-icon2 { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; pointer-events: none; }
         .ct-tabs { display: flex; gap: 0; border-bottom: 2px solid #f5f0e8; background: #fff; overflow-x: auto; scrollbar-width: none; }
         .ct-tabs::-webkit-scrollbar { display: none; }
-        .ct-tab { flex: 1; min-width: 70px; padding: 12px 8px; font-size: 0.78rem; font-weight: 500; text-align: center; cursor: pointer; border: none; background: none; color: #9a7a5c; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+        .ct-tab { flex: 1; min-width: 70px; padding: 12px 8px; font-size: 0.88rem; font-weight: 500; text-align: center; cursor: pointer; border: none; background: none; color: #9a7a5c; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
         .ct-tab:hover { color: #ea580c; background: #fff7f0; }
         .ct-tab.on { color: #ea580c; border-bottom-color: #ea580c; font-weight: 600; }
 
-        .ct-body { padding: 12px 12px 100px; max-width: 700px; margin: 0 auto; }
-        .ct-group-title { font-size: 0.8rem; font-weight: 600; color: #9a7a5c; letter-spacing: 0.08em; text-transform: uppercase; padding: 16px 0 8px; border-bottom: 1px solid #f5f0e8; margin-bottom: 10px; }
+        .ct-body { padding: 12px 12px 110px; max-width: 700px; margin: 0 auto; }
+        .ct-group-title { font-size: 0.88rem; font-weight: 600; color: #9a7a5c; letter-spacing: 0.08em; text-transform: uppercase; padding: 16px 0 8px; border-bottom: 1px solid #f5f0e8; margin-bottom: 10px; }
 
-        .ct-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
-        @media (min-width: 480px) { .ct-grid { grid-template-columns: repeat(4, 1fr); } }
-        @media (min-width: 700px) { .ct-grid { grid-template-columns: repeat(5, 1fr); } }
+        /* 2 cols mobile-first → 3 at 480px → 4 at 700px */
+        .ct-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 8px; }
+        @media (min-width: 480px) { .ct-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 700px) { .ct-grid { grid-template-columns: repeat(4, 1fr); } }
 
         .ct-card { background: #fff; border: 1px solid #f0ebe4; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow 0.15s; }
         .ct-card:hover { box-shadow: 0 4px 14px rgba(28,16,8,0.1); }
-        .ct-img-wrap { aspect-ratio: 4/3; background: #f5f0e8; overflow: hidden; position: relative; }
+        /* 16:9 panoramic photos */
+        .ct-img-wrap { aspect-ratio: 16/9; background: #f5f0e8; overflow: hidden; position: relative; }
         .ct-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .ct-card:hover .ct-img { transform: scale(1.05); }
         .ct-img-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; background: linear-gradient(135deg, #f5f0e8 0%, #ede5d5 100%); }
 
-        .ct-body-card { padding: 7px 7px 8px; flex: 1; display: flex; flex-direction: column; gap: 3px; }
-        .ct-nombre { font-size: 0.75rem; font-weight: 500; color: #1c1008; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .ct-precio { font-size: 0.8rem; font-weight: 700; color: #ea580c; }
-        .ct-precio-unit { font-size: 0.62rem; color: #9a7a5c; font-weight: 400; }
-        .ct-precio-bs { font-size: 0.62rem; color: #9a7a5c; }
+        .ct-body-card { padding: 8px 8px 10px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .ct-nombre { font-size: 0.92rem; font-weight: 500; color: #1c1008; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .ct-precio { font-size: 0.95rem; font-weight: 700; color: #ea580c; }
+        .ct-precio-unit { font-size: 0.72rem; color: #9a7a5c; font-weight: 400; }
+        .ct-precio-bs { font-size: 0.72rem; color: #9a7a5c; }
 
-        .ct-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-top: 4px; }
-        .ct-preset { padding: 4px 2px; font-size: 0.65rem; font-weight: 500; border-radius: 6px; cursor: pointer; border: 1px solid #f0ebe4; background: #fff; color: #5c4a3a; text-align: center; transition: all 0.1s; }
+        .ct-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
+        .ct-preset { padding: 6px 2px; font-size: 0.78rem; font-weight: 600; border-radius: 6px; cursor: pointer; border: 1px solid #f0ebe4; background: #fff; color: #5c4a3a; text-align: center; transition: all 0.1s; }
         .ct-preset:hover { border-color: #f97316; color: #ea580c; }
         .ct-preset.on { background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border-color: transparent; }
 
-        .ct-manual-input { width: 100%; margin-top: 4px; padding: 6px 8px; border: 1.5px solid #f97316; border-radius: 7px; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: #1c1008; outline: none; background: #fff7f0; }
+        .ct-manual-input { width: 100%; margin-top: 4px; padding: 7px 8px; border: 1.5px solid #f97316; border-radius: 7px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; color: #1c1008; outline: none; background: #fff7f0; }
         .ct-manual-input::placeholder { color: #c4a882; }
-        .ct-custom-toggle { width: 100%; margin-top: 3px; padding: 4px; background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.65rem; color: #c4a882; cursor: pointer; text-align: center; }
+        .ct-custom-toggle { width: 100%; margin-top: 3px; padding: 4px; background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.74rem; color: #c4a882; cursor: pointer; text-align: center; }
         .ct-custom-toggle:hover { color: #ea580c; }
-        .ct-add { width: 100%; padding: 7px 4px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; margin-top: 4px; }
+        .ct-add { width: 100%; padding: 9px 4px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; margin-top: 5px; }
         .ct-add:hover { opacity: 0.88; }
 
+        /* FAB */
         .ct-fab { position: fixed; bottom: 20px; right: 16px; background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border: none; border-radius: 50px; padding: 13px 20px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 18px rgba(249,115,22,0.45); display: flex; align-items: center; gap: 8px; z-index: 100; transition: transform 0.15s; }
         .ct-fab:hover { transform: scale(1.04); }
         .ct-fab-badge { background: white; color: #ea580c; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 
+        /* Cart Drawer */
+        .cd-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 150; display: flex; align-items: flex-end; justify-content: center; }
+        .cd-drawer { width: 100%; max-width: 520px; max-height: 88dvh; max-height: 88vh; background: #fff; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+        .cd-handle { width: 36px; height: 4px; background: #e5ddd0; border-radius: 2px; margin: 10px auto 0; flex-shrink: 0; }
+        .cd-head { padding: 12px 16px 12px; border-bottom: 1px solid #f0ebe4; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .cd-title { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 600; color: #1c1008; flex: 1; }
+        .cd-badge { background: #ea580c; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .cd-vaciar { background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.75rem; color: #ef4444; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: background 0.1s; flex-shrink: 0; }
+        .cd-vaciar:hover { background: #fef2f2; }
+        .cd-close { background: #f5f0e8; border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; color: #5c4a3a; flex-shrink: 0; transition: background 0.1s; }
+        .cd-close:hover { background: #ede5d5; }
+
+        .cd-scroll { flex: 1; overflow-y: auto; }
+        .cd-items { padding: 10px 16px; display: flex; flex-direction: column; gap: 12px; }
+
+        .cd-item { display: flex; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid #f5f0e8; }
+        .cd-item:last-child { border-bottom: none; }
+        .cd-item-info { flex: 1; min-width: 0; }
+        .cd-item-nombre { font-size: 0.88rem; font-weight: 500; color: #1c1008; }
+        .cd-item-var { font-size: 0.72rem; color: #9a7a5c; margin-top: 1px; }
+        .cd-item-precio { font-size: 0.78rem; color: #9a7a5c; margin-top: 2px; }
+        .cd-qty-row { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+        .cd-qty-btn { background: #fff7f0; border: 1px solid #fde8d8; border-radius: 8px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.05rem; color: #ea580c; transition: background 0.1s; flex-shrink: 0; }
+        .cd-qty-btn:hover { background: #ffedd5; }
+        .cd-qty-num { font-size: 0.85rem; font-weight: 600; color: #1c1008; min-width: 40px; text-align: center; }
+        .cd-item-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 8px; }
+        .cd-del { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 1rem; padding: 2px; transition: opacity 0.1s; }
+        .cd-del:hover { opacity: 0.7; }
+        .cd-item-total { font-size: 0.9rem; font-weight: 700; color: #ea580c; white-space: nowrap; }
+
+        .cd-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #9a7a5c; padding: 40px; }
+        .cd-empty p { font-size: 0.9rem; }
+
+        .cd-foot { flex-shrink: 0; border-top: 2px solid #f0ebe4; padding: 12px 16px 20px; background: #fff; display: flex; flex-direction: column; gap: 10px; }
+        .cd-seguir { width: 100%; padding: 10px; background: #f5f0e8; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; cursor: pointer; color: #5c4a3a; }
+        .cd-seguir:hover { background: #ede5d5; }
+        .cd-sep { border: none; border-top: 1px solid #f0ebe4; }
+        .cd-delivery-row { display: flex; align-items: center; gap: 8px; }
+        .cd-delivery-label { font-size: 0.85rem; font-weight: 500; color: #1c1008; }
+        .cd-check { accent-color: #ea580c; width: 16px; height: 16px; cursor: pointer; }
+        .cd-zones { display: flex; flex-direction: column; gap: 6px; padding-left: 24px; }
+        .cd-zone-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .cd-zone-radio { accent-color: #ea580c; width: 15px; height: 15px; cursor: pointer; }
+        .cd-zone-name { font-size: 0.78rem; color: #5c4a3a; flex: 1; }
+        .cd-zone-fee { font-size: 0.78rem; font-weight: 600; color: #ea580c; }
+        .cd-totals { display: flex; flex-direction: column; gap: 5px; }
+        .cd-row { display: flex; justify-content: space-between; font-size: 0.82rem; }
+        .cd-row span:first-child { color: #9a7a5c; }
+        .cd-row span:last-child { font-weight: 500; color: #1c1008; }
+        .cd-total-row { display: flex; justify-content: space-between; font-size: 1rem; font-weight: 700; padding-top: 7px; border-top: 1px solid #f0ebe4; }
+        .cd-total-row span:last-child { color: #ea580c; }
+        .cd-total-bs { font-size: 0.7rem; font-weight: 400; color: #9a7a5c; margin-left: 4px; }
+        .cd-wa { width: 100%; padding: 15px; background: #16a34a; color: white; border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: 0.02em; transition: background 0.15s; }
+        .cd-wa:hover { background: #15803d; }
+        .cd-wa-hint { text-align: center; font-size: 0.72rem; color: #9a7a5c; }
+
+        /* Variant modal */
         .ct-modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
         @media (min-width: 500px) { .ct-modal-ov { align-items: center; } }
         .ct-modal { background: white; border-radius: 20px 20px 0 0; padding: 20px 16px 28px; width: 100%; max-width: 420px; }
@@ -489,7 +409,6 @@ export default function Catalogo() {
           />
         </div>
 
-        {/* Tabs de categoría */}
         {!busqueda && (
           <div className="ct-tabs">
             {catsPrincipales.map(c => (
@@ -574,7 +493,7 @@ export default function Catalogo() {
                             {isManual ? "← Presets" : "Personalizar"}
                           </button>
                           <button className="ct-add" onClick={() => handleAgregar(p)}>
-                            + Agregar
+                            + Agregar al pedido
                           </button>
                         </div>
                       </div>
@@ -591,31 +510,120 @@ export default function Catalogo() {
           {tasa > 0 && <><br />Tasa BCV hoy: <strong>Bs. {tasa.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></>}
         </div>
 
-        {cartCount > 0 && (
+        {cartCount > 0 && !cartOpen && (
           <button className="ct-fab" onClick={() => setCartOpen(true)}>
             🛒 Ver pedido <span className="ct-fab-badge">{cartCount}</span>
           </button>
         )}
-
-        {/* Modal variantes */}
-        {varModal && (
-          <div className="ct-modal-ov" onClick={() => setVarModal(null)}>
-            <div className="ct-modal" onClick={e => e.stopPropagation()}>
-              <div className="ct-modal-title">{varModal.nombre}</div>
-              <div className="ct-modal-sub">Elige una variante — qty: {isKgUnit(varModal.unidad) ? fmtKg(pendingQty) : pendingQty}</div>
-              <div className="ct-var-list">
-                {varModal.variaciones.filter(v => Number(v.stock_actual??0)>0).map(v => (
-                  <div key={v.id} className="ct-var-row" onClick={() => { addToCart(varModal, v, pendingQty); setVarModal(null); }}>
-                    <span className="ct-var-nombre">{v.nombre}</span>
-                    {v.precio_venta_usd ? <span className="ct-var-precio">{fmt(Number(v.precio_venta_usd))}</span> : null}
-                  </div>
-                ))}
-              </div>
-              <button className="ct-modal-cancel" onClick={() => setVarModal(null)}>Cancelar</button>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* ── Floating Cart Drawer ────────────────────────────────────────────── */}
+      {cartOpen && (
+        <div className="cd-overlay" onClick={() => setCartOpen(false)}>
+          <div className="cd-drawer" onClick={e => e.stopPropagation()}>
+            <div className="cd-handle" />
+            <div className="cd-head">
+              <span className="cd-title">Mi Pedido</span>
+              {cartCount > 0 && <span className="cd-badge">{cartCount}</span>}
+              {cart.length > 0 && (
+                <button className="cd-vaciar" onClick={() => { setCart([]); setCartOpen(false); }}>
+                  Vaciar lista
+                </button>
+              )}
+              <button className="cd-close" onClick={() => setCartOpen(false)}>✕</button>
+            </div>
+
+            <div className="cd-scroll">
+              <div className="cd-items">
+                {cart.length === 0 ? (
+                  <div className="cd-empty">
+                    <span style={{ fontSize: "2.5rem" }}>🛒</span>
+                    <p>Tu pedido está vacío</p>
+                  </div>
+                ) : (
+                  cart.map(item => (
+                    <div key={item.key} className="cd-item">
+                      <div className="cd-item-info">
+                        <div className="cd-item-nombre">{item.nombre}</div>
+                        {item.variante && <div className="cd-item-var">{item.variante}</div>}
+                        <div className="cd-item-precio">{fmt(item.precio)} / {item.esKg ? "kg" : "unid"}</div>
+                        <div className="cd-qty-row">
+                          <button className="cd-qty-btn" onClick={() => updateQty(item.key, item.esKg ? -0.1 : -1)}>−</button>
+                          <span className="cd-qty-num">{item.esKg ? fmtKg(item.qty) : item.qty}</span>
+                          <button className="cd-qty-btn" onClick={() => updateQty(item.key, item.esKg ? 0.1 : 1)}>+</button>
+                        </div>
+                      </div>
+                      <div className="cd-item-right">
+                        <button className="cd-del" onClick={() => setCart(prev => prev.filter(i => i.key !== item.key))}>🗑</button>
+                        <span className="cd-item-total">{fmt(item.precio * item.qty)}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {cart.length > 0 && (
+              <div className="cd-foot">
+                <button className="cd-seguir" onClick={() => setCartOpen(false)}>← Seguir agregando productos</button>
+                <hr className="cd-sep" />
+
+                <div className="cd-delivery-row">
+                  <input type="checkbox" className="cd-check" checked={delivery} onChange={e => setDelivery(e.target.checked)} id="del-check" />
+                  <label htmlFor="del-check" className="cd-delivery-label">Incluir Delivery</label>
+                </div>
+                {delivery && (
+                  <div className="cd-zones">
+                    {DELIVERY_ZONES.map(z => (
+                      <label key={z.id} className="cd-zone-row">
+                        <input type="radio" className="cd-zone-radio" name="zona" value={z.id} checked={zona === z.id} onChange={() => setZona(z.id)} />
+                        <span className="cd-zone-name">{z.name}</span>
+                        <span className="cd-zone-fee">+{fmt(z.fee)}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                <div className="cd-totals">
+                  <div className="cd-row"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+                  {delivery && <div className="cd-row"><span>Delivery</span><span>{fmt(deliveryFee)}</span></div>}
+                  <div className="cd-total-row">
+                    <span>Total</span>
+                    <span>
+                      {fmt(total)}
+                      {tasa > 0 && <span className="cd-total-bs">/ Bs. {(total * tasa).toLocaleString("es-VE", { maximumFractionDigits: 0 })}</span>}
+                    </span>
+                  </div>
+                </div>
+
+                <button className="cd-wa" onClick={sendWhatsApp}>
+                  <span>💬</span> ENVIAR PEDIDO POR WHATSAPP
+                </button>
+                <p className="cd-wa-hint">Se abrirá WhatsApp para enviarnos tu pedido</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Variant modal */}
+      {varModal && (
+        <div className="ct-modal-ov" onClick={() => setVarModal(null)}>
+          <div className="ct-modal" onClick={e => e.stopPropagation()}>
+            <div className="ct-modal-title">{varModal.nombre}</div>
+            <div className="ct-modal-sub">Elige una variante — qty: {isKgUnit(varModal.unidad) ? fmtKg(pendingQty) : pendingQty}</div>
+            <div className="ct-var-list">
+              {varModal.variaciones.filter(v => Number(v.stock_actual??0)>0).map(v => (
+                <div key={v.id} className="ct-var-row" onClick={() => { addToCart(varModal, v, pendingQty); setVarModal(null); }}>
+                  <span className="ct-var-nombre">{v.nombre}</span>
+                  {v.precio_venta_usd ? <span className="ct-var-precio">{fmt(Number(v.precio_venta_usd))}</span> : null}
+                </div>
+              ))}
+            </div>
+            <button className="ct-modal-cancel" onClick={() => setVarModal(null)}>Cancelar</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
