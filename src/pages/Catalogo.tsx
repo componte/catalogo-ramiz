@@ -397,19 +397,20 @@ export default function Catalogo() {
         .ct-notif { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #1c1008; color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.82rem; z-index: 999; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.3); max-width: 90vw; text-align: center; }
 
         /* Delivery modal */
-        .dm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 250; display: flex; align-items: flex-end; justify-content: center; }
+        .dm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 250; display: flex; align-items: flex-end; justify-content: center; }
         @media (min-width: 500px) { .dm-overlay { align-items: center; } }
-        .dm-modal { background: white; border-radius: 20px 20px 0 0; padding: 20px 16px 28px; width: 100%; max-width: 440px; }
-        @media (min-width: 500px) { .dm-modal { border-radius: 16px; } }
-        .dm-title { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 600; color: #1c1008; margin-bottom: 4px; }
-        .dm-sub { font-size: 0.78rem; color: #9a7a5c; margin-bottom: 16px; }
-        .dm-options { display: flex; flex-direction: column; gap: 8px; }
-        .dm-option { width: 100%; padding: 14px 16px; background: #faf8f5; border: 1.5px solid #f0ebe4; border-radius: 12px; cursor: pointer; text-align: left; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+        .dm-modal { background: white; border-radius: 24px 24px 0 0; padding: 24px 18px 32px; width: 100%; max-width: 480px; }
+        @media (min-width: 500px) { .dm-modal { border-radius: 20px; } }
+        .dm-title { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 600; color: #1c1008; margin-bottom: 6px; line-height: 1.2; }
+        .dm-sub { font-size: 1rem; color: #9a7a5c; margin-bottom: 20px; line-height: 1.4; }
+        .dm-options { display: flex; flex-direction: column; gap: 10px; }
+        .dm-option { width: 100%; padding: 16px 18px; background: #faf8f5; border: 2px solid #f0ebe4; border-radius: 14px; cursor: pointer; text-align: left; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
         .dm-option:hover { border-color: #f97316; background: #fff7f0; }
-        .dm-option-info { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        .dm-option-name { font-size: 0.88rem; font-weight: 500; color: #1c1008; flex: 1; }
-        .dm-option-fee { font-size: 0.92rem; font-weight: 700; color: #ea580c; flex-shrink: 0; }
-        .dm-cancel { width: 100%; margin-top: 10px; padding: 11px; background: #f5f0e8; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; color: #9a7a5c; }
+        .dm-option:active { transform: scale(0.98); }
+        .dm-option-info { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .dm-option-name { font-size: 1.05rem; font-weight: 600; color: #1c1008; flex: 1; line-height: 1.35; }
+        .dm-option-fee { font-size: 1rem; font-weight: 700; color: #ea580c; flex-shrink: 0; }
+        .dm-cancel { width: 100%; margin-top: 12px; padding: 14px; background: #f5f0e8; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 1rem; cursor: pointer; color: #9a7a5c; font-weight: 500; }
       `}</style>
 
       <div className="ct">
@@ -627,17 +628,33 @@ export default function Catalogo() {
       {deliveryModal && (
         <div className="dm-overlay" onClick={() => setDeliveryModal(false)}>
           <div className="dm-modal" onClick={e => e.stopPropagation()}>
-            <div className="dm-title">¿Cómo recibirás tu pedido?</div>
-            <div className="dm-sub">Selecciona tu sector para incluir el costo de delivery</div>
+            <div className="dm-title">¿Dónde te encuentras?</div>
+            <div className="dm-sub">Selecciona tu sector y te calculamos el delivery al instante</div>
             <div className="dm-options">
-              {DELIVERY_ZONES.map(z => (
-                <button key={z.id} className="dm-option" onClick={() => { setDeliveryModal(false); sendWhatsApp(z.id); }}>
-                  <div className="dm-option-info">
-                    <span className="dm-option-name">{z.name}</span>
-                    <span className="dm-option-fee">{z.fee > 0 ? `+${fmt(z.fee)}` : "Gratis"}</span>
-                  </div>
-                </button>
-              ))}
+              <button className="dm-option" onClick={() => { setDeliveryModal(false); sendWhatsApp("th"); }}>
+                <div className="dm-option-info">
+                  <span className="dm-option-name">📍 Estoy en Terrazas Amarillas, Azules o Verdes</span>
+                  <span className="dm-option-fee">+$0.40</span>
+                </div>
+              </button>
+              <button className="dm-option" onClick={() => { setDeliveryModal(false); sendWhatsApp("otros"); }}>
+                <div className="dm-option-info">
+                  <span className="dm-option-name">📍 Estoy en Laguna, Arado, Tejados, Casablanca o Terrazas Edif</span>
+                  <span className="dm-option-fee">+$0.80</span>
+                </div>
+              </button>
+              <button className="dm-option" onClick={() => { setDeliveryModal(false); sendWhatsApp("zafra"); }}>
+                <div className="dm-option-info">
+                  <span className="dm-option-name">📍 Estoy en La Zafra, Panelas u otro sector</span>
+                  <span className="dm-option-fee">+$1.00</span>
+                </div>
+              </button>
+              <button className="dm-option" onClick={() => { setDeliveryModal(false); sendWhatsApp("retiro"); }}>
+                <div className="dm-option-info">
+                  <span className="dm-option-name">🚶 Lo voy a buscar — Retiro directo</span>
+                  <span className="dm-option-fee" style={{ color: "#16a34a" }}>Gratis</span>
+                </div>
+              </button>
             </div>
             <button className="dm-cancel" onClick={() => setDeliveryModal(false)}>Cancelar</button>
           </div>
