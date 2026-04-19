@@ -266,9 +266,9 @@ export default function Catalogo() {
         .ct-search2:focus { border-color: #f97316; }
         .ct-search2::placeholder { color: #c4a882; }
         .ct-search-icon2 { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; pointer-events: none; }
-        .ct-tabs { display: flex; gap: 8px; padding: 10px 12px; background: #fff; border-bottom: 1px solid #f0ebe4; overflow-x: auto; scrollbar-width: none; }
+        .ct-tabs { display: flex; gap: 7px; padding: 10px 12px; background: #fff; border-bottom: 1px solid #f0ebe4; overflow-x: auto; scrollbar-width: none; }
         .ct-tabs::-webkit-scrollbar { display: none; }
-        .ct-tab { flex: 1; min-width: 80px; padding: 10px 10px; font-size: 0.92rem; font-weight: 600; text-align: center; cursor: pointer; border: 2px solid #f0ebe4; border-radius: 50px; background: #faf8f5; color: #9a7a5c; white-space: nowrap; transition: all 0.18s; letter-spacing: 0.01em; }
+        .ct-tab { flex-shrink: 0; padding: 9px 16px; font-size: 0.88rem; font-weight: 600; text-align: center; cursor: pointer; border: 2px solid #e8e0d5; border-radius: 50px; background: #faf8f5; color: #7a6050; white-space: nowrap; transition: all 0.18s; }
         .ct-tab:hover { border-color: #f97316; color: #ea580c; background: #fff7f0; }
         .ct-tab.on { background: linear-gradient(135deg, #f97316, #f59e0b); color: white; border-color: transparent; box-shadow: 0 3px 10px rgba(249,115,22,0.35); }
 
@@ -316,56 +316,56 @@ export default function Catalogo() {
         .cd-drawer { width: 100%; max-width: 520px; max-height: 88dvh; max-height: 88vh; background: #fff; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; overflow: hidden; }
         .cd-handle { width: 36px; height: 4px; background: #e5ddd0; border-radius: 2px; margin: 10px auto 0; flex-shrink: 0; }
         .cd-head { padding: 12px 16px 12px; border-bottom: 1px solid #f0ebe4; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-        .cd-title { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 600; color: #1c1008; flex: 1; }
-        .cd-badge { background: #ea580c; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .cd-vaciar { background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.75rem; color: #ef4444; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: background 0.1s; flex-shrink: 0; }
+        .cd-title { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 600; color: #1c1008; flex: 1; }
+        .cd-badge { background: #ea580c; color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .cd-vaciar { background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: #ef4444; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background 0.1s; flex-shrink: 0; }
         .cd-vaciar:hover { background: #fef2f2; }
-        .cd-close { background: #f5f0e8; border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; color: #5c4a3a; flex-shrink: 0; transition: background 0.1s; }
+        .cd-close { background: #f5f0e8; border: none; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.05rem; color: #5c4a3a; flex-shrink: 0; transition: background 0.1s; }
         .cd-close:hover { background: #ede5d5; }
 
         .cd-scroll { flex: 1; overflow-y: auto; }
-        .cd-items { padding: 10px 16px; display: flex; flex-direction: column; gap: 12px; }
+        .cd-items { padding: 12px 16px; display: flex; flex-direction: column; gap: 14px; }
 
-        .cd-item { display: flex; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid #f5f0e8; }
+        .cd-item { display: flex; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid #f5f0e8; }
         .cd-item:last-child { border-bottom: none; }
         .cd-item-info { flex: 1; min-width: 0; }
-        .cd-item-nombre { font-size: 0.88rem; font-weight: 500; color: #1c1008; }
-        .cd-item-var { font-size: 0.72rem; color: #9a7a5c; margin-top: 1px; }
-        .cd-item-precio { font-size: 0.78rem; color: #9a7a5c; margin-top: 2px; }
-        .cd-qty-row { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
-        .cd-qty-btn { background: #fff7f0; border: 1px solid #fde8d8; border-radius: 8px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.05rem; color: #ea580c; transition: background 0.1s; flex-shrink: 0; }
+        .cd-item-nombre { font-size: 1rem; font-weight: 600; color: #1c1008; }
+        .cd-item-var { font-size: 0.82rem; color: #9a7a5c; margin-top: 2px; }
+        .cd-item-precio { font-size: 0.88rem; color: #9a7a5c; margin-top: 3px; }
+        .cd-qty-row { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+        .cd-qty-btn { background: #fff7f0; border: 1.5px solid #fde8d8; border-radius: 8px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.15rem; color: #ea580c; transition: background 0.1s; flex-shrink: 0; }
         .cd-qty-btn:hover { background: #ffedd5; }
-        .cd-qty-num { font-size: 0.85rem; font-weight: 600; color: #1c1008; min-width: 40px; text-align: center; }
+        .cd-qty-num { font-size: 0.95rem; font-weight: 700; color: #1c1008; min-width: 44px; text-align: center; }
         .cd-item-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 8px; }
-        .cd-del { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 1rem; padding: 2px; transition: opacity 0.1s; }
+        .cd-del { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 1.1rem; padding: 2px; transition: opacity 0.1s; }
         .cd-del:hover { opacity: 0.7; }
-        .cd-item-total { font-size: 0.9rem; font-weight: 700; color: #ea580c; white-space: nowrap; }
+        .cd-item-total { font-size: 1rem; font-weight: 700; color: #ea580c; white-space: nowrap; }
 
         .cd-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #9a7a5c; padding: 40px; }
-        .cd-empty p { font-size: 0.9rem; }
+        .cd-empty p { font-size: 1rem; }
 
         .cd-foot { flex-shrink: 0; border-top: 2px solid #f0ebe4; padding: 12px 16px 20px; background: #fff; display: flex; flex-direction: column; gap: 10px; }
-        .cd-seguir { width: 100%; padding: 10px; background: #f5f0e8; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; cursor: pointer; color: #5c4a3a; }
-        .cd-seguir:hover { background: #ede5d5; }
+        .cd-seguir { width: 100%; padding: 12px; background: linear-gradient(135deg, #f97316, #f59e0b); border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 700; cursor: pointer; color: white; box-shadow: 0 2px 8px rgba(249,115,22,0.3); transition: opacity 0.15s; }
+        .cd-seguir:hover { opacity: 0.9; }
         .cd-sep { border: none; border-top: 1px solid #f0ebe4; }
         .cd-delivery-row { display: flex; align-items: center; gap: 8px; }
-        .cd-delivery-label { font-size: 0.85rem; font-weight: 500; color: #1c1008; }
-        .cd-check { accent-color: #ea580c; width: 16px; height: 16px; cursor: pointer; }
-        .cd-zones { display: flex; flex-direction: column; gap: 6px; padding-left: 24px; }
+        .cd-delivery-label { font-size: 0.95rem; font-weight: 600; color: #1c1008; }
+        .cd-check { accent-color: #ea580c; width: 18px; height: 18px; cursor: pointer; }
+        .cd-zones { display: flex; flex-direction: column; gap: 7px; padding-left: 26px; }
         .cd-zone-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-        .cd-zone-radio { accent-color: #ea580c; width: 15px; height: 15px; cursor: pointer; }
-        .cd-zone-name { font-size: 0.78rem; color: #5c4a3a; flex: 1; }
-        .cd-zone-fee { font-size: 0.78rem; font-weight: 600; color: #ea580c; }
-        .cd-totals { display: flex; flex-direction: column; gap: 5px; }
-        .cd-row { display: flex; justify-content: space-between; font-size: 0.82rem; }
+        .cd-zone-radio { accent-color: #ea580c; width: 16px; height: 16px; cursor: pointer; }
+        .cd-zone-name { font-size: 0.86rem; color: #5c4a3a; flex: 1; }
+        .cd-zone-fee { font-size: 0.86rem; font-weight: 700; color: #ea580c; }
+        .cd-totals { display: flex; flex-direction: column; gap: 6px; }
+        .cd-row { display: flex; justify-content: space-between; font-size: 0.92rem; }
         .cd-row span:first-child { color: #9a7a5c; }
         .cd-row span:last-child { font-weight: 500; color: #1c1008; }
-        .cd-total-row { display: flex; justify-content: space-between; font-size: 1rem; font-weight: 700; padding-top: 7px; border-top: 1px solid #f0ebe4; }
+        .cd-total-row { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 700; padding-top: 8px; border-top: 1px solid #f0ebe4; }
         .cd-total-row span:last-child { color: #ea580c; }
-        .cd-total-bs { font-size: 0.7rem; font-weight: 400; color: #9a7a5c; margin-left: 4px; }
-        .cd-wa { width: 100%; padding: 15px; background: #16a34a; color: white; border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: 0.02em; transition: background 0.15s; }
+        .cd-total-bs { font-size: 0.75rem; font-weight: 400; color: #9a7a5c; margin-left: 4px; }
+        .cd-wa { width: 100%; padding: 16px; background: #16a34a; color: white; border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 1.05rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: 0.02em; transition: background 0.15s; }
         .cd-wa:hover { background: #15803d; }
-        .cd-wa-hint { text-align: center; font-size: 0.72rem; color: #9a7a5c; }
+        .cd-wa-hint { text-align: center; font-size: 0.78rem; color: #9a7a5c; }
 
         /* Variant modal */
         .ct-modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
